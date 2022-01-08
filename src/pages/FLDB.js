@@ -20,7 +20,6 @@ import {
   Directions as DirectionsIcon,
   LocationOn as LocationOnIcon,
   Phone as PhoneIcon,
-  Language as LanguageIcon,
 } from "@mui/icons-material";
 import { useLocation } from "react-router-dom";
 import ReactPlayer from "react-player";
@@ -159,20 +158,6 @@ function FLDB() {
           <List>
             <ListItem>
               <ListItemIcon>
-                <LanguageIcon />
-              </ListItemIcon>
-              <ListItemText
-                primary={
-                  data.website ? (
-                    <a href={data.website}>{data.website}</a>
-                  ) : (
-                    "N/A"
-                  )
-                }
-              />
-            </ListItem>
-            <ListItem>
-              <ListItemIcon>
                 <DirectionsIcon />
               </ListItemIcon>
               <ListItemText
@@ -194,7 +179,7 @@ function FLDB() {
           </List>
         </Grid>
 
-        <Grid item xs={12}>
+        <Grid item xs={12} sx={{ marginTop: "1rem" }}>
           <Accordion>
             <AccordionSummary
               expandIcon={<ExpandMoreIcon />}
