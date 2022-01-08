@@ -19,6 +19,8 @@ import {
   NoMeetingRoom as NoMeetingRoomIcon,
   Directions as DirectionsIcon,
   LocationOn as LocationOnIcon,
+  Phone as PhoneIcon,
+  Language as LanguageIcon,
 } from "@mui/icons-material";
 import { useLocation } from "react-router-dom";
 import ReactPlayer from "react-player";
@@ -58,7 +60,7 @@ function FLDB() {
       ) {
         setRestaurantStatus(true);
       }
-      setTimeout(() => setLoading(false), 1000);
+      setLoading(false);
     };
 
     fetchData();
@@ -102,7 +104,14 @@ function FLDB() {
             {String(data.videoTitle)}
           </Typography>
         </Grid>
-        <Grid item xs={12} md={6} sx={{ marginBottom: "-2rem" }}>
+        <Grid
+          item
+          xs={12}
+          md={6}
+          sx={{
+            marginBottom: "-2rem",
+          }}
+        >
           <List>
             <ListItem>
               <ListItemIcon>
@@ -128,10 +137,40 @@ function FLDB() {
               </ListItemIcon>
               <ListItemText primary={restaurantStatus ? "Open" : "Closed"} />
             </ListItem>
+            <ListItem>
+              <ListItemIcon>
+                <PhoneIcon />
+              </ListItemIcon>
+              <ListItemText
+                primary={
+                  data.international_phone_number ? (
+                    <a href={`tel:${data.international_phone_number}`}>
+                      {String(data.international_phone_number)}
+                    </a>
+                  ) : (
+                    "N/A"
+                  )
+                }
+              />
+            </ListItem>
           </List>
         </Grid>
         <Grid item xs={12} md={6}>
           <List>
+            <ListItem>
+              <ListItemIcon>
+                <LanguageIcon />
+              </ListItemIcon>
+              <ListItemText
+                primary={
+                  data.website ? (
+                    <a href={data.website}>{data.website}</a>
+                  ) : (
+                    "N/A"
+                  )
+                }
+              />
+            </ListItem>
             <ListItem>
               <ListItemIcon>
                 <DirectionsIcon />
