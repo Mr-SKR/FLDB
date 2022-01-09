@@ -24,7 +24,7 @@ import {
 import { useLocation } from "react-router-dom";
 import ReactPlayer from "react-player";
 
-import ResponsiveAppBar from "../components/headers/Header";
+import ResponsiveDrawer from "../components/headers/Header";
 
 const axios = require("axios").default;
 
@@ -32,7 +32,6 @@ function FLDB() {
   const location = useLocation();
   const videoId = location.pathname.split("/")[2];
 
-  // TODO: Add loading screen when search data is being fetch
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
   const [restaurantStatus, setRestaurantStatus] = useState(false);
@@ -81,7 +80,7 @@ function FLDB() {
     </>
   ) : (
     <>
-      <ResponsiveAppBar />
+      <ResponsiveDrawer />
 
       <Grid container spacing={2} sx={{ justifyContent: "center" }}>
         <Grid item xs={12} md={4} sx={{ width: "480px", height: "20rem" }}>

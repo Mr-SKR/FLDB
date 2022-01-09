@@ -4,15 +4,17 @@ import CircularProgress from "@mui/material/CircularProgress";
 import TextField from "@mui/material/TextField";
 import Autocomplete from "@mui/material/Autocomplete";
 import Button from "@mui/material/Button";
-
 import logo from "../assets/img/mochi-peachcat-cat.gif";
-import ResponsiveAppBar from "../components/headers/Header";
+import ResponsiveDrawer from "../components/headers/Header";
+import windowDimensions from "../utils/windowDimensions";
+import { useTheme } from "@emotion/react";
 
 const axios = require("axios").default;
 
 function Home() {
+  const { width } = windowDimensions();
+  const theme = useTheme();
   const [searchValue, setSearchValue] = useState({});
-  // TODO: Add loading screen when search data is being fetch
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
 
@@ -48,15 +50,18 @@ function Home() {
     </>
   ) : (
     <>
-      <ResponsiveAppBar />
+      <ResponsiveDrawer />
       <Box
         sx={{
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
           alignItems: "center",
-          // TODO: Calculate height accurately
-          height: "85vh",
+          height: `calc(100vh - ${
+            width >= 600
+              ? theme.custom.appbarHeight.small
+              : theme.custom.appbarHeight.large
+          }px)`,
         }}
       >
         <img src={logo} alt="logo" max-width="50vw" height="auto" />

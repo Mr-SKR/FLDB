@@ -1,14 +1,14 @@
-import ResponsiveAppBar from "../components/headers/Header";
+import ResponsiveDrawer from "../components/headers/Header";
 import { Typography } from "@mui/material";
 
-function NearMe() {
+function About() {
   return (
     <>
-      <ResponsiveAppBar />
+      <ResponsiveDrawer />
       <header className="App-body">
         <Typography textAlign="center">Coming Soon</Typography>
       </header>
     </>
   );
 }
-export default NearMe;
+export default About;

@@ -1,7 +1,7 @@
 import ResponsiveDrawer from "../components/headers/Header";
 import { Typography } from "@mui/material";
 
-function About() {
+function NearBy() {
   return (
     <>
       <ResponsiveDrawer />
@@ -11,4 +11,4 @@ function About() {
     </>
   );
 }
-export default About;
+export default NearBy;

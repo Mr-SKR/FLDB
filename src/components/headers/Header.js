@@ -1,119 +1,118 @@
-//https:mui.com/components/app-bar/#app-bar-with-responsive-menu
-import * as React from "react";
+import { useState, Fragment } from "react";
 import AppBar from "@mui/material/AppBar";
 import Box from "@mui/material/Box";
-import Toolbar from "@mui/material/Toolbar";
+import Divider from "@mui/material/Divider";
+import Drawer from "@mui/material/Drawer";
 import IconButton from "@mui/material/IconButton";
-import Typography from "@mui/material/Typography";
-import Menu from "@mui/material/Menu";
+import HomeIcon from "@mui/icons-material/Home";
+import InfoIcon from "@mui/icons-material/Info";
+import NearMeIcon from "@mui/icons-material/NearMe";
+import MyLocationIcon from "@mui/icons-material/MyLocation";
+import List from "@mui/material/List";
+import ListItem from "@mui/material/ListItem";
+import ListItemIcon from "@mui/material/ListItemIcon";
+import ListItemText from "@mui/material/ListItemText";
 import MenuIcon from "@mui/icons-material/Menu";
-import Container from "@mui/material/Container";
-import Button from "@mui/material/Button";
-import MenuItem from "@mui/material/MenuItem";
-
+import Toolbar from "@mui/material/Toolbar";
+import Typography from "@mui/material/Typography";
 import { Link } from "react-router-dom";
+import { useTheme } from "@mui/material/styles";
 
-const ResponsiveAppBar = () => {
-  const [anchorElNav, setAnchorElNav] = React.useState(null);
+function ResponsiveDrawer(props) {
+  const { window } = props;
+  const theme = useTheme();
+  const drawerWidth = theme.custom.drawerWidth;
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  const handleOpenNavMenu = (event) => {
-    setAnchorElNav(event.currentTarget);
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen);
   };
 
-  const handleCloseNavMenu = () => {
-    setAnchorElNav(null);
-  };
+  const drawer = (
+    <div>
+      <Toolbar />
+      <Divider />
+      <List>
+        {[
+          { text: "Home", route: "/", icon: <HomeIcon /> },
+          { text: "Nearby", route: "/nearby", icon: <NearMeIcon /> },
+          {
+            text: "Interactive",
+            route: "/interactive",
+            icon: <MyLocationIcon />,
+          },
+          { text: "About", route: "/about", icon: <InfoIcon /> },
+        ].map((page) => {
+          return (
+            <Fragment key={page.text}>
+              <ListItem key={page.text} component={Link} to={page.route}>
+                <ListItemIcon>{page.icon}</ListItemIcon>
+                <ListItemText
+                  primary={page.text}
+                  primaryTypographyProps={{
+                    color: "black",
+                    fontWeight: "bold",
+                  }}
+                />
+              </ListItem>
+              <Divider />
+            </Fragment>
+          );
+        })}
+      </List>
+    </div>
+  );
+
+  const container =
+    window !== undefined ? () => window().document.body : undefined;
 
   return (
-    <AppBar position="sticky">
-      <Container maxWidth="xl">
-        <Toolbar disableGutters>
-          <Typography
-            variant="h6"
-            noWrap
-            component="div"
-            sx={{ mr: 2, display: { xs: "none", md: "flex" } }}
+    <>
+      <AppBar position="sticky">
+        <Toolbar>
+          <IconButton
+            color="inherit"
+            aria-label="open drawer"
+            edge="start"
+            onClick={handleDrawerToggle}
+            sx={{ mr: 2 }}
           >
+            <MenuIcon />
+          </IconButton>
+          <Typography variant="h6" noWrap component="div">
             FLDB
           </Typography>
-
-          <Box sx={{ flexGrow: 1, display: { xs: "flex", md: "none" } }}>
-            <IconButton
-              size="large"
-              aria-label="account of current user"
-              aria-controls="menu-appbar"
-              aria-haspopup="true"
-              onClick={handleOpenNavMenu}
-              color="inherit"
-            >
-              <MenuIcon />
-            </IconButton>
-            <Menu
-              id="menu-appbar"
-              anchorEl={anchorElNav}
-              anchorOrigin={{
-                vertical: "bottom",
-                horizontal: "left",
-              }}
-              keepMounted
-              transformOrigin={{
-                vertical: "top",
-                horizontal: "left",
-              }}
-              open={Boolean(anchorElNav)}
-              onClose={handleCloseNavMenu}
-              sx={{
-                display: { xs: "block", md: "none" },
-              }}
-            >
-              <MenuItem key="Home" component={Link} to="/">
-                <Typography textAlign="center">Home</Typography>
-              </MenuItem>
-              <MenuItem key="nearme" component={Link} to="/nearme">
-                <Typography textAlign="center">Near me</Typography>
-              </MenuItem>
-              <MenuItem key="About" component={Link} to="/about">
-                <Typography textAlign="center">About</Typography>
-              </MenuItem>
-            </Menu>
-          </Box>
-          <Typography
-            variant="h6"
-            noWrap
-            component="div"
-            sx={{ flexGrow: 1, display: { xs: "flex", md: "none" } }}
-          >
-            FLDB
-          </Typography>
-          <Box sx={{ flexGrow: 1, display: { xs: "none", md: "flex" } }}>
-            <Button
-              key={"Home"}
-              component={Link}
-              to="/"
-              sx={{ my: 2, color: "white", display: "block" }}
-            >
-              Home
-            </Button>
-            <Button
-              key={"nearme"}
-              component={Link}
-              to="/nearme"
-              sx={{ my: 2, color: "white", display: "block" }}
-            >
-              Near me
-            </Button>
-            <Button
-              key={"About"}
-              component={Link}
-              to="/about"
-              sx={{ my: 2, color: "white", display: "block" }}
-            >
-              About
-            </Button>
-          </Box>
         </Toolbar>
-      </Container>
-    </AppBar>
+      </AppBar>
+      <Box
+        component="nav"
+        sx={{
+          display: "flex",
+          width: { sm: `${drawerWidth}px` },
+          flexShrink: { sm: 0 },
+        }}
+      >
+        <Drawer
+          container={container}
+          variant="temporary"
+          open={mobileOpen}
+          onClose={handleDrawerToggle}
+          ModalProps={{
+            keepMounted: true, // Better open performance on mobile.
+          }}
+          sx={{
+            display: { xs: "block" },
+            "& .MuiDrawer-paper": {
+              boxSizing: "border-box",
+              width: `${drawerWidth}px`,
+            },
+          }}
+        >
+          {drawer}
+        </Drawer>
+      </Box>
+    </>
   );
-};
-export default ResponsiveAppBar;
+}
+
+export default ResponsiveDrawer;
