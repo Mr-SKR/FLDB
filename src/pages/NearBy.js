@@ -145,7 +145,7 @@ function NearBy() {
                 oldRecord.push(
                   <FoodCard
                     key={newRecord._id}
-                    id={newRecord._id}
+                    videoId={newRecord.videoId}
                     title={newRecord.name}
                     description={newRecord.videoTitle}
                     displacement={newRecord.displacement}

@@ -9,8 +9,8 @@ import { CardActionArea } from "@mui/material";
 export default function FoodCard(props) {
   return (
     <>
-      <Card id={props.id} sx={{ textAlign: "center" }}>
-        <CardActionArea>
+      <Card id={props.videoId} sx={{ textAlign: "center" }}>
+        <CardActionArea href={`/fldb/${props.videoId}`}>
           <CardContent>
             <Typography gutterBottom variant="h6" component="div">
               {props.title ? props.title : "No title"}
