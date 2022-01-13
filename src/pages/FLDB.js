@@ -135,6 +135,8 @@ function FLDB() {
                     data.rating ? (
                       <a
                         href={`https://search.google.com/local/reviews?placeid=${data.place_id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
                       >
                         {String(data.rating)} / 5
                       </a>
@@ -179,7 +181,19 @@ function FLDB() {
                   <DirectionsIcon />
                 </ListItemIcon>
                 <ListItemText
-                  primary={data.url ? <a href={data.url}>{data.url}</a> : "N/A"}
+                  primary={
+                    data.url ? (
+                      <a
+                        href={data.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {data.url}{" "}
+                      </a>
+                    ) : (
+                      "N/A"
+                    )
+                  }
                 />
               </ListItem>
               <ListItem>
