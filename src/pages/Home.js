@@ -93,7 +93,9 @@ function Home() {
             variant="contained"
             sx={{ height: "56px", ml: "5px" }}
             onClick={() => {
-              window.location = "/fldb/" + String(searchValue.videoId);
+              if (searchValue.videoId) {
+                window.location = "/fldb/" + String(searchValue.videoId);
+              }
             }}
           >
             Go
