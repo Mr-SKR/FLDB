@@ -7,7 +7,6 @@ import IconButton from "@mui/material/IconButton";
 import HomeIcon from "@mui/icons-material/Home";
 import InfoIcon from "@mui/icons-material/Info";
 import NearMeIcon from "@mui/icons-material/NearMe";
-import MyLocationIcon from "@mui/icons-material/MyLocation";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import ListItemIcon from "@mui/material/ListItemIcon";
@@ -36,11 +35,6 @@ function ResponsiveDrawer(props) {
         {[
           { text: "Home", route: "/", icon: <HomeIcon /> },
           { text: "Nearby", route: "/nearby", icon: <NearMeIcon /> },
-          {
-            text: "Interactive",
-            route: "/interactive",
-            icon: <MyLocationIcon />,
-          },
           { text: "About", route: "/about", icon: <InfoIcon /> },
         ].map((page) => {
           return (

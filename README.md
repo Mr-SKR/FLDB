@@ -23,7 +23,27 @@ REACT_APP_FLDB_API_BASE_URL is the URL of [backend API server](https://github.co
 
 ```
 REACT_APP_FLDB_API_BASE_URL=<YOUR FLDB_API_BASE_URL>
+REACT_APP_GOOGLE_MAPS_KEY=<YOUR_GOOGLE_MAPS_API_KEY>
 ```
+
+For Localhost only:
+
+```
+HTTPS=true
+SSL_CRT_FILE=cert.pem
+SSL_KEY_FILE=key.pem
+```
+
+### Create a cert for hosting react on https on localhost (optional)
+
+[Guide](https://flaviocopes.com/react-how-to-configure-https-localhost/)
+
+```
+openssl req -x509 -newkey rsa:2048 -keyout keytmp.pem -out cert.pem
+openssl rsa -in keytmp.pem -out key.pem
+```
+
+Place the generated cert.pem and key.pem in user root of project directory
 
 ### Run locally
 
@@ -32,6 +52,10 @@ From the root of the project folder, execute below command(s)
 ```
 yarn start
 ```
+
+### Debugging on remote mobile firefox:
+
+- [Firefox debug over network](https://developer.mozilla.org/en-US/docs/Tools/about:debugging#connecting_over_the_network)
 
 ### Setup monitoring using New Relic (optional)
 
