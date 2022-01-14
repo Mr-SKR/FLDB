@@ -45,6 +45,7 @@ function FLDB() {
       } catch (error) {
         console.error(error.message);
       }
+      setLoading(false);
     };
 
     fetchData();
