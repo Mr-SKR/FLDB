@@ -37,6 +37,7 @@ function NearBy() {
         setUserLocation(location);
         currentLocation = location;
         setLocationPermission(await getLocationPermissionState());
+        setLocationComputing(false);
       } catch (error) {
         if (error.message.toLowerCase().includes("denied")) {
           console.log(error.message);
@@ -45,13 +46,11 @@ function NearBy() {
         }
         setLocationComputing(false);
         setLoadingMessage(null);
-        return;
       }
-      setLocationComputing(false);
 
-      setDataLoading(true);
-      setLoadingMessage("Fetching restaurant information");
       try {
+        setDataLoading(true);
+        setLoadingMessage("Fetching restaurant information");
         const { data: response } = await axios.get(
           process.env.REACT_APP_FLDB_API_BASE_URL + "/videos"
         );
@@ -74,6 +73,8 @@ function NearBy() {
             return oldRecord;
           }, []);
           setData(result);
+          setDataLoading(false);
+          setLoadingMessage(null);
         }
       } catch (error) {
         console.error(error.message);
@@ -81,12 +82,10 @@ function NearBy() {
         setLoadingMessage(null);
         return;
       }
-      setDataLoading(false);
-      setLoadingMessage(null);
     })();
   }, []);
 
-  if (locationPermission === "prompt" && !userLocation) {
+  if (locationPermission === "denied" || !userLocation) {
     return (
       <Box
         sx={{
@@ -99,13 +98,7 @@ function NearBy() {
         }}
       >
         <Typography sx={{ textAlign: "center" }}>
-          Please provide location permissions to this web page. If you've
-          already done this and still reading this message on firefox browser,
-          you might want to click on <b>Remember this decision</b> while
-          allowing access to permission.
-        </Typography>
-        <Typography sx={{ textAlign: "center" }}>
-          Guide to enable location:{" "}
+          Enable location access to this site. Guide to enable location:{" "}
           <a href="https://support.google.com/chrome/answer/142065?hl=en">
             Chrome
           </a>
@@ -115,31 +108,7 @@ function NearBy() {
         </Typography>
       </Box>
     );
-  } else if (locationPermission === "denied" || !locationPermission) {
-    return (
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          width: "100vw",
-          height: "100vh",
-        }}
-      >
-        <Typography sx={{ textAlign: "center" }}>
-          Looks like you have denied this site from accessing your current
-          location. Guide to enable location:{" "}
-          <a href="https://support.google.com/chrome/answer/142065?hl=en">
-            Chrome
-          </a>
-          ,{" "}
-          <a href="https://support.mozilla.org/bm/questions/1260334">Firefox</a>
-          , <a href="https://discussions.apple.com/thread/252953307">Safari</a>
-        </Typography>
-      </Box>
-    );
-  } else {
+  } else if (userLocation) {
     return dataLoading || locationComputing ? (
       <>
         <Box
@@ -189,8 +158,7 @@ function NearBy() {
                 width: "100%",
               }}
             >
-              {console.log(locationPermission)}
-              {console.log(userLocation)}
+              {String(userLocation)}
               <Typography sx={{ textAlign: "center" }}>
                 Oops! Something went worng!
               </Typography>
