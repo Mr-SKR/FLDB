@@ -86,34 +86,7 @@ function NearBy() {
     })();
   }, []);
 
-  if (locationPermission === "denied") {
-    return (
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          width: "100vw",
-          height: "100vh",
-        }}
-      >
-        <Typography sx={{ textAlign: "center" }}>
-          Looks like you have denied this site from accessing your current
-          location. Guide to enable location:{" "}
-          <a href="https://support.google.com/chrome/answer/142065?hl=en">
-            Chrome
-          </a>
-          ,{" "}
-          <a href="https://support.mozilla.org/bm/questions/1260334">Firefox</a>
-          , <a href="https://discussions.apple.com/thread/252953307">Safari</a>
-        </Typography>
-      </Box>
-    );
-  } else if (
-    !locationPermission ||
-    (locationPermission === "prompt" && !userLocation)
-  ) {
+  if (locationPermission === "prompt" && !userLocation) {
     return (
       <Box
         sx={{
@@ -133,6 +106,30 @@ function NearBy() {
         </Typography>
         <Typography sx={{ textAlign: "center" }}>
           Guide to enable location:{" "}
+          <a href="https://support.google.com/chrome/answer/142065?hl=en">
+            Chrome
+          </a>
+          ,{" "}
+          <a href="https://support.mozilla.org/bm/questions/1260334">Firefox</a>
+          , <a href="https://discussions.apple.com/thread/252953307">Safari</a>
+        </Typography>
+      </Box>
+    );
+  } else if (locationPermission === "denied" || !locationPermission) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          width: "100vw",
+          height: "100vh",
+        }}
+      >
+        <Typography sx={{ textAlign: "center" }}>
+          Looks like you have denied this site from accessing your current
+          location. Guide to enable location:{" "}
           <a href="https://support.google.com/chrome/answer/142065?hl=en">
             Chrome
           </a>
