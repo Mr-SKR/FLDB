@@ -16,8 +16,6 @@ import {
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import {
   Grade as GradeIcon,
-  MeetingRoom as MeetingRoomIcon,
-  NoMeetingRoom as NoMeetingRoomIcon,
   Directions as DirectionsIcon,
   LocationOn as LocationOnIcon,
   Phone as PhoneIcon,
@@ -35,7 +33,6 @@ function FLDB() {
 
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
-  const [restaurantStatus, setRestaurantStatus] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -49,26 +46,8 @@ function FLDB() {
         console.error(error.message);
       }
     };
-    const isRestaurantOpen = async () => {
-      try {
-        const { data: response } = await axios.get(
-          process.env.REACT_APP_FLDB_API_BASE_URL + "/isopen/" + String(videoId)
-        );
-        if (
-          response?.opening_hours?.open_now &&
-          response?.business_status === "OPERATIONAL"
-        ) {
-          setRestaurantStatus(true);
-        }
-      } catch (error) {
-        console.error(error.message);
-      }
-
-      setLoading(false);
-    };
 
     fetchData();
-    isRestaurantOpen();
   }, [videoId]);
 
   return loading ? (
@@ -145,16 +124,6 @@ function FLDB() {
                     )
                   }
                 />
-              </ListItem>
-              <ListItem>
-                <ListItemIcon>
-                  {restaurantStatus ? (
-                    <MeetingRoomIcon />
-                  ) : (
-                    <NoMeetingRoomIcon />
-                  )}
-                </ListItemIcon>
-                <ListItemText primary={restaurantStatus ? "Open" : "Closed"} />
               </ListItem>
               <ListItem>
                 <ListItemIcon>
