@@ -1,8 +1,10 @@
-# Food loveers Database (FLDB)
+# Food loveers Database (FLDb)
 
 ## About
 
-TODO
+Food Lovers Database(FLDb) is a collection of food Vlogs from [Food Lovers TV](https://www.youtube.com/channel/UC-Lq6oBPTgTXT_K-ylWL6hg)
+
+More info: https://fl-db.in/about
 
 ## Project Setup
 

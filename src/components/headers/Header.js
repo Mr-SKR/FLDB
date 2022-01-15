@@ -11,6 +11,7 @@ import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
+import Button from "@mui/material/Button";
 import MenuIcon from "@mui/icons-material/Menu";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
@@ -73,9 +74,19 @@ function ResponsiveDrawer(props) {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div">
-            FLDB
-          </Typography>
+          <Button
+            component={Link}
+            to={"/"}
+            sx={{
+              color: "white",
+              textDecoration: "none",
+              textTransform: "none",
+            }}
+          >
+            <Typography variant="h6" noWrap>
+              FLDb
+            </Typography>
+          </Button>
         </Toolbar>
       </AppBar>
       <Box
