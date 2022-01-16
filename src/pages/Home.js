@@ -1,9 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, forwardRef } from "react";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
+import Typography from "@mui/material/Typography";
 import TextField from "@mui/material/TextField";
 import Autocomplete from "@mui/material/Autocomplete";
 import Button from "@mui/material/Button";
+import Snackbar from "@mui/material/Snackbar";
+import MuiAlert from "@mui/material/Alert";
 import logo from "../assets/img/mochi-peachcat-cat.gif";
 import ResponsiveDrawer from "../components/headers/Header";
 import windowDimensions from "../utils/windowDimensions";
@@ -11,25 +14,45 @@ import { useTheme } from "@emotion/react";
 
 const axios = require("axios").default;
 
+const Alert = forwardRef(function Alert(props, ref) {
+  return <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />;
+});
+
 function Home() {
   const { width } = windowDimensions();
   const theme = useTheme();
   const [searchValue, setSearchValue] = useState({});
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
+  const [loadingMessage, setLoadingMessage] = useState(null);
+  const [openSnackbar, setOpenSnackbar] = useState(false);
+
+  const handleSnackbarClose = (event, reason) => {
+    if (reason === "clickaway") {
+      return;
+    }
+
+    setOpenSnackbar(false);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      setLoadingMessage("Fetching restaurant information");
       try {
         const { data: response } = await axios.get(
-          process.env.REACT_APP_FLDB_API_BASE_URL + "/searchindices"
+          process.env.REACT_APP_FLDB_API_BASE_URL + "/searchindices",
+          {
+            timeout: 10000,
+          }
         );
         setData(response);
       } catch (error) {
+        setOpenSnackbar(true);
         console.error(error.message);
       }
       setLoading(false);
+      setLoadingMessage(null);
     };
 
     fetchData();
@@ -40,12 +63,14 @@ function Home() {
       <Box
         sx={{
           display: "flex",
+          flexDirection: "column",
           justifyContent: "center",
           alignItems: "center",
           height: "100vh",
         }}
       >
         <CircularProgress />
+        <Typography>{loadingMessage}</Typography>
       </Box>
     </>
   ) : (
@@ -64,6 +89,19 @@ function Home() {
           }px)`,
         }}
       >
+        <Snackbar
+          open={openSnackbar}
+          autoHideDuration={6000}
+          onClose={handleSnackbarClose}
+        >
+          <Alert
+            onClose={handleSnackbarClose}
+            severity="error"
+            sx={{ width: "100%" }}
+          >
+            Request timed out. Try again
+          </Alert>
+        </Snackbar>
         <img src={logo} alt="logo" max-width="50vw" height="auto" />
         <Box
           sx={{

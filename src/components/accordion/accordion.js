@@ -14,15 +14,13 @@ export default function CustomAccordion(props) {
       <Accordion>
         <AccordionSummary
           expandIcon={<ExpandMoreIcon />}
-          id={`${props.title}-accordion`}
+          id={`${props.qid}-accordion`}
         >
           <Typography>{props.title}</Typography>
         </AccordionSummary>
         <AccordionDetails>
           <Linkify tagName="p">
-            <Typography textAlign="center">
-              {props.description ? String(props.description) : "N/A"}
-            </Typography>
+            {props.description ? String(props.description) : "N/A"}
           </Linkify>
         </AccordionDetails>
       </Accordion>
