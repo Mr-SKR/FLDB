@@ -1,5 +1,6 @@
 import { useState, useEffect, forwardRef } from "react";
 import Box from "@mui/material/Box";
+import Grid from "@mui/material/Grid";
 import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
 import TextField from "@mui/material/TextField";
@@ -7,10 +8,11 @@ import Autocomplete from "@mui/material/Autocomplete";
 import Button from "@mui/material/Button";
 import Snackbar from "@mui/material/Snackbar";
 import MuiAlert from "@mui/material/Alert";
-import logo from "../assets/img/mochi-peachcat-cat.gif";
+import logo from "../assets/img/walking-chef.gif";
 import ResponsiveDrawer from "../components/headers/Header";
 import windowDimensions from "../utils/windowDimensions";
 import { useTheme } from "@emotion/react";
+import { Link } from "react-router-dom";
 
 const axios = require("axios").default;
 
@@ -76,70 +78,91 @@ function Home() {
   ) : (
     <>
       <ResponsiveDrawer />
-      <Box
+      <Grid
+        container
+        direction="column"
+        justifyContent="center"
+        alignItems="center"
+        spacing={2}
         sx={{
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
           height: `calc(100vh - ${
             width >= 600
-              ? theme.custom.appbarHeight.small
-              : theme.custom.appbarHeight.large
+              ? theme.custom.appbarHeight.large
+              : theme.custom.appbarHeight.small
           }px)`,
         }}
       >
-        <Snackbar
-          open={openSnackbar}
-          autoHideDuration={6000}
-          onClose={handleSnackbarClose}
+        <Grid item>
+          <img src={logo} alt="logo" max-width="60vw" height="auto" />
+        </Grid>
+        <Grid
+          item
+          container
+          justifyContent="center"
+          alignItems="center"
+          spacing={1}
         >
-          <Alert
-            onClose={handleSnackbarClose}
-            severity="error"
-            sx={{ width: "100%" }}
-          >
-            Request timed out. Try again
-          </Alert>
-        </Snackbar>
-        <img src={logo} alt="logo" max-width="50vw" height="auto" />
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            mt: "3rem",
-          }}
-        >
-          <Autocomplete
-            disablePortal
-            sx={{ width: "70vw", maxWidth: "40rem" }}
-            id="search-box"
-            options={data}
-            getOptionLabel={(option) => option.videoTitle}
-            isOptionEqualToValue={(option, value) =>
-              option.title === value.title
-            }
-            onChange={(_event, newSearchValue) => {
-              setSearchValue(newSearchValue);
-            }}
-            renderInput={(params) => (
-              <TextField {...params} label="Select restaurant" />
-            )}
-          />
+          <Grid item>
+            <Autocomplete
+              disablePortal
+              sx={{ width: "70vw", maxWidth: "40rem" }}
+              id="search-box"
+              options={data}
+              getOptionLabel={(option) => option.videoTitle}
+              isOptionEqualToValue={(option, value) =>
+                option.title === value.title
+              }
+              onChange={(_event, newSearchValue) => {
+                setSearchValue(newSearchValue);
+              }}
+              renderInput={(params) => (
+                <TextField {...params} label="Select restaurant" />
+              )}
+            />
+          </Grid>
+          <Grid item>
+            <Button
+              variant="contained"
+              sx={{ height: "56px" }}
+              onClick={() => {
+                if (searchValue.videoId) {
+                  window.location = "/fldb/" + String(searchValue.videoId);
+                }
+              }}
+            >
+              Go
+            </Button>
+          </Grid>
+        </Grid>
+        <Grid item>
           <Button
-            variant="contained"
-            sx={{ height: "56px", ml: "5px" }}
+            variant="text"
+            sx={{ height: "56px", textTransform: "none" }}
+            component={Link}
+            to="/nearby"
             onClick={() => {
               if (searchValue.videoId) {
                 window.location = "/fldb/" + String(searchValue.videoId);
               }
             }}
           >
-            Go
+            Nearby restaurants
           </Button>
-        </Box>
-      </Box>
+        </Grid>
+      </Grid>
+      <Snackbar
+        open={openSnackbar}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+      >
+        <Alert
+          onClose={handleSnackbarClose}
+          severity="error"
+          sx={{ width: "100%" }}
+        >
+          Request timed out. Try again
+        </Alert>
+      </Snackbar>
     </>
   );
 }
