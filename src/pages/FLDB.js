@@ -24,6 +24,7 @@ import { useLocation } from "react-router-dom";
 import ReactPlayer from "react-player";
 
 import ResponsiveDrawer from "../components/headers/Header";
+import CustomAccordion from "../components/accordion/accordion";
 
 const axios = require("axios").default;
 
@@ -199,22 +200,14 @@ function FLDB() {
             </Accordion>
           </Grid>
 
-          <Grid item xs={12}>
-            <Accordion>
-              <AccordionSummary
-                expandIcon={<ExpandMoreIcon />}
-                id="description-accordion"
-              >
-                <Typography>Description</Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Typography textAlign="center">
-                  {data.videoDescription
-                    ? String(data.videoDescription)
-                    : "N/A"}
-                </Typography>
-              </AccordionDetails>
-            </Accordion>
+          <Grid item xs={12} sx={{ marginBottom: "2rem" }}>
+            <CustomAccordion
+              qid="description"
+              title="Description"
+              description={
+                data.videoDescription ? String(data.videoDescription) : "N/A"
+              }
+            />
           </Grid>
         </Grid>
       </Box>
