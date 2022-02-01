@@ -4,6 +4,8 @@ import { Box, Typography, Container } from "@mui/material";
 import CircularProgress from "@mui/material/CircularProgress";
 import Snackbar from "@mui/material/Snackbar";
 import MuiAlert from "@mui/material/Alert";
+import ToggleButton from "@mui/material/ToggleButton";
+import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 
 import FoodCard from "../components/cards/card";
 import {
@@ -22,6 +24,7 @@ const Alert = forwardRef(function Alert(props, ref) {
 });
 
 function NearBy() {
+  const pageSize = 10;
   const { width } = windowDimensions();
   const theme = useTheme();
   const [userLocation, setUserLocation] = useState(null);
@@ -29,14 +32,58 @@ function NearBy() {
   const [dataLoading, setDataLoading] = useState(false);
   const [locationComputing, setLocationComputing] = useState(false);
   const [data, setData] = useState([]);
+  const [currentPageData, setCurrentPageData] = useState([]);
+  const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState(null);
   const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [prevPageEnabled, setPrevPageEnabled] = useState(false);
+  const [nextPageEnabled, setNextPageEnabled] = useState(true);
+
+  const handleToggleChange = (event, newAlignment) => {
+    console.log(event.target.value);
+    if (event.target.value === "next") handleNextPageClick();
+    else if (event.target.value === "prev") handlePrevPageClick();
+  };
 
   const handleSnackbarClose = (event, reason) => {
     if (reason === "clickaway") {
       return;
     }
     setOpenSnackbar(false);
+  };
+
+  const handleNextPageClick = () => {
+    if ((currentPageIndex + 1) * pageSize < data.length) {
+      setCurrentPageData(
+        data.slice(
+          (currentPageIndex + 1) * pageSize,
+          (currentPageIndex + 2) * pageSize
+        )
+      );
+      setCurrentPageIndex(currentPageIndex + 1);
+      setPrevPageEnabled(true);
+      window.scrollTo(0, 0);
+    }
+    if ((currentPageIndex + 2) * pageSize > data.length) {
+      setNextPageEnabled(false);
+    }
+  };
+
+  const handlePrevPageClick = () => {
+    if (currentPageIndex - 1 >= 0) {
+      setCurrentPageData(
+        data.slice(
+          (currentPageIndex - 1) * pageSize,
+          currentPageIndex * pageSize
+        )
+      );
+      setCurrentPageIndex(currentPageIndex - 1);
+      setNextPageEnabled(true);
+      window.scrollTo(0, 0);
+    }
+    if (currentPageIndex - 1 === 0) {
+      setPrevPageEnabled(false);
+    }
   };
 
   if (!("geolocation" in navigator)) {
@@ -94,7 +141,11 @@ function NearBy() {
 
             return oldRecord;
           }, []);
-          setData(result);
+          const sortedData = result.sort(
+            (a, b) => a.displacement - b.displacement
+          );
+          setData(sortedData);
+          setCurrentPageData(sortedData.slice(0, pageSize));
           setDataLoading(false);
           setLoadingMessage(null);
         }
@@ -163,14 +214,20 @@ function NearBy() {
             Request timed out. Try again
           </Alert>
         </Snackbar>
-        <Box
-          component={Container}
-          sx={{ maxWidth: "720px", justfyContent: "center" }}
-        >
-          {data.length ? (
-            data
-              .sort((a, b) => a.displacement - b.displacement)
-              .reduce((oldRecord, newRecord) => {
+
+        {data.length ? (
+          <Box
+            sx={{
+              display: "flex",
+              justfyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <Box
+              component={Container}
+              sx={{ maxWidth: "720px", justfyContent: "center" }}
+            >
+              {currentPageData.reduce((oldRecord, newRecord) => {
                 if (newRecord.name) {
                   oldRecord.push(
                     <FoodCard
@@ -183,27 +240,65 @@ function NearBy() {
                   );
                 }
                 return oldRecord;
-              }, [])
-          ) : (
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                width: "100%",
-                height: `calc(100vh - ${
-                  width >= 600
-                    ? theme.custom.appbarHeight.small
-                    : theme.custom.appbarHeight.large
-                }px)`,
-              }}
-            >
-              <Typography sx={{ textAlign: "center" }}>
-                Oops! Something went worng!
-              </Typography>
+              }, [])}
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "center",
+                  marginTop: "1rem",
+                  marginBottom: "1rem",
+                }}
+              >
+                <ToggleButtonGroup
+                  exclusive
+                  onChange={handleToggleChange}
+                  aria-label="text alignment"
+                >
+                  <ToggleButton
+                    value="prev"
+                    aria-label="previous page"
+                    disabled={!prevPageEnabled}
+                  >
+                    PREV
+                  </ToggleButton>
+                  <ToggleButton
+                    value="page"
+                    aria-label="page"
+                    disabled
+                    sx={{ textTransform: "none" }}
+                  >
+                    Page - {currentPageIndex + 1}
+                  </ToggleButton>
+                  <ToggleButton
+                    value="next"
+                    aria-label="next page"
+                    disabled={!nextPageEnabled}
+                  >
+                    NEXT
+                  </ToggleButton>
+                </ToggleButtonGroup>
+              </Box>
             </Box>
-          )}
-        </Box>
+          </Box>
+        ) : (
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              width: "100%",
+              height: `calc(100vh - ${
+                width >= 600
+                  ? theme.custom.appbarHeight.small
+                  : theme.custom.appbarHeight.large
+              }px)`,
+            }}
+          >
+            <Typography sx={{ textAlign: "center" }}>
+              Oops! Something went worng!
+            </Typography>
+          </Box>
+        )}
       </>
     );
   }
