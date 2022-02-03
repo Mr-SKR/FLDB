@@ -119,7 +119,9 @@ function NearBy() {
         const { data: response } = await axios.get(
           process.env.REACT_APP_FLDB_API_BASE_URL + "/videos",
           {
-            params: { fields: "_id,videoId,name,videoTitle,geometry" },
+            params: {
+              fields: "_id,videoId,name,videoTitle,geometry,hasVeg,thumbnail",
+            },
             timeout: 10000,
           }
         );
@@ -214,7 +216,6 @@ function NearBy() {
             Request timed out. Try again
           </Alert>
         </Snackbar>
-
         {data.length ? (
           <Box
             sx={{
@@ -236,6 +237,12 @@ function NearBy() {
                       title={newRecord.name}
                       description={newRecord.videoTitle}
                       displacement={newRecord.displacement}
+                      height={width > 600 ? 480 : 180}
+                      thumbnail={
+                        width > 600
+                          ? newRecord?.thumbnail?.large
+                          : newRecord?.thumbnail?.small
+                      }
                     />
                   );
                 }
@@ -267,7 +274,7 @@ function NearBy() {
                     disabled
                     sx={{ textTransform: "none" }}
                   >
-                    Page - {currentPageIndex + 1}
+                    {currentPageIndex + 1}/{data.length / pageSize}
                   </ToggleButton>
                   <ToggleButton
                     value="next"
