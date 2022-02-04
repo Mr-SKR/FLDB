@@ -1,11 +1,14 @@
 import * as React from "react";
-import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
-import CardActions from "@mui/material/CardActions";
-import CardMedia from "@mui/material/CardMedia";
-import Divider from "@mui/material/Divider";
-import Typography from "@mui/material/Typography";
-import { CardActionArea } from "@mui/material";
+import {
+  CardActionArea,
+  Button,
+  Typography,
+  Divider,
+  CardMedia,
+  CardActions,
+  CardContent,
+  Card,
+} from "@mui/material";
 
 export default function FoodCard(props) {
   return (
@@ -30,11 +33,20 @@ export default function FoodCard(props) {
             </Typography>
           </CardContent>
         </CardActionArea>
-        <CardActions sx={{ textAlign: "center", justifyContent: "center" }}>
-          <Typography gutterBottom variant="h7" component="div">
+        <CardActions sx={{ justifyContent: "center" }}>
+          <Button size="medium" sx={{ textTransform: "none" }}>
             Displacement:{" "}
             {props.displacement ? `${props.displacement} Km` : "N/A"}
-          </Typography>
+          </Button>
+          {props.hasVeg && (
+            <Button
+              size="medium"
+              color="secondary"
+              sx={{ textTransform: "none" }}
+            >
+              Veg Friendly
+            </Button>
+          )}
         </CardActions>
       </Card>
       <Divider />

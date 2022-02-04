@@ -90,6 +90,12 @@ const faqs = [
     description:
       "FLDb backend scraps the Food Lovers TV YouTube channel periodically to gather video information and google maps location link from video description using the YouTube data API. These google links are used to fetch information such as Google reviews/ratings, contact info, restaurant's operating hours etc., by querying the Google maps places API",
   },
+  {
+    qid: 15,
+    title: "Are veg friendly labelled restaurants pure veg?",
+    description:
+      "No. These are the restaurants that have vegetarian options in the menu. They might or might not be pure vegetarian restaurants",
+  },
 ];
 
 function About() {
@@ -105,7 +111,11 @@ function About() {
           marginTop: "2rem",
         }}
       >
-        <Grid container spacing={2} sx={{ justifyContent: "center" }}>
+        <Grid
+          container
+          spacing={2}
+          sx={{ justifyContent: "center", marginBottom: "1rem" }}
+        >
           {faqs.map((faq) => (
             <CustomAccordion
               key={faq.qid}

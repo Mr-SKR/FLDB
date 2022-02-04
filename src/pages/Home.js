@@ -48,7 +48,18 @@ function Home() {
             timeout: 10000,
           }
         );
-        setData(response);
+        const sortedData = response.sort((a, b) => {
+          const nameA = a.videoTitle.toUpperCase();
+          const nameB = b.videoTitle.toUpperCase();
+          if (nameA < nameB) {
+            return -1;
+          }
+          if (nameA > nameB) {
+            return 1;
+          }
+          return 0;
+        });
+        setData(sortedData);
       } catch (error) {
         setOpenSnackbar(true);
         console.error(error.message);

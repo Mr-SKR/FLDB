@@ -6,6 +6,7 @@ import Snackbar from "@mui/material/Snackbar";
 import MuiAlert from "@mui/material/Alert";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
+import Fab from "@mui/material/Fab";
 
 import FoodCard from "../components/cards/card";
 import {
@@ -32,20 +33,21 @@ function NearBy() {
   const [dataLoading, setDataLoading] = useState(false);
   const [locationComputing, setLocationComputing] = useState(false);
   const [data, setData] = useState([]);
+  const [currentData, setCurrentData] = useState([]);
   const [currentPageData, setCurrentPageData] = useState([]);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState(null);
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [prevPageEnabled, setPrevPageEnabled] = useState(false);
   const [nextPageEnabled, setNextPageEnabled] = useState(true);
+  const [fabText, setFabText] = useState("Veg");
 
-  const handleToggleChange = (event, newAlignment) => {
-    console.log(event.target.value);
+  const handleToggleChange = (event) => {
     if (event.target.value === "next") handleNextPageClick();
     else if (event.target.value === "prev") handlePrevPageClick();
   };
 
-  const handleSnackbarClose = (event, reason) => {
+  const handleSnackbarClose = (_event, reason) => {
     if (reason === "clickaway") {
       return;
     }
@@ -53,9 +55,9 @@ function NearBy() {
   };
 
   const handleNextPageClick = () => {
-    if ((currentPageIndex + 1) * pageSize < data.length) {
+    if ((currentPageIndex + 1) * pageSize < currentData.length) {
       setCurrentPageData(
-        data.slice(
+        currentData.slice(
           (currentPageIndex + 1) * pageSize,
           (currentPageIndex + 2) * pageSize
         )
@@ -64,7 +66,7 @@ function NearBy() {
       setPrevPageEnabled(true);
       window.scrollTo(0, 0);
     }
-    if ((currentPageIndex + 2) * pageSize > data.length) {
+    if ((currentPageIndex + 2) * pageSize >= currentData.length) {
       setNextPageEnabled(false);
     }
   };
@@ -72,7 +74,7 @@ function NearBy() {
   const handlePrevPageClick = () => {
     if (currentPageIndex - 1 >= 0) {
       setCurrentPageData(
-        data.slice(
+        currentData.slice(
           (currentPageIndex - 1) * pageSize,
           currentPageIndex * pageSize
         )
@@ -90,6 +92,26 @@ function NearBy() {
     alert("No geolocation available!");
     window.location.replace("/");
   }
+
+  const onFABClick = () => {
+    if (fabText === "Veg") {
+      const result = data.reduce((oldRecord, newRecord) => {
+        if (newRecord.hasVeg) {
+          oldRecord.push({ ...newRecord });
+        }
+        return oldRecord;
+      }, []);
+      setCurrentData(result);
+      setFabText("All");
+      setCurrentPageData(result.slice(0, pageSize));
+      setCurrentPageIndex(0);
+    } else {
+      setCurrentData(data);
+      setFabText("Veg");
+      setCurrentPageData(data.slice(0, pageSize));
+      setCurrentPageIndex(0);
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -147,6 +169,7 @@ function NearBy() {
             (a, b) => a.displacement - b.displacement
           );
           setData(sortedData);
+          setCurrentData(sortedData);
           setCurrentPageData(sortedData.slice(0, pageSize));
           setDataLoading(false);
           setLoadingMessage(null);
@@ -216,77 +239,100 @@ function NearBy() {
             Request timed out. Try again
           </Alert>
         </Snackbar>
-        {data.length ? (
-          <Box
+        {currentData.length && (
+          <Fab
+            aria-label="veg-toggle"
+            color={fabText === "Veg" ? "secondary" : "primary"}
+            onClick={onFABClick}
             sx={{
-              display: "flex",
-              justfyContent: "center",
-              alignItems: "center",
+              position: "fixed",
+              bottom: 20,
+              right: 20,
+              zIndex: 1,
             }}
           >
+            {fabText}
+          </Fab>
+        )}
+        {currentData.length ? (
+          <>
             <Box
-              component={Container}
-              sx={{ maxWidth: "720px", justfyContent: "center" }}
+              sx={{
+                display: "flex",
+                justfyContent: "center",
+                alignItems: "center",
+              }}
             >
-              {currentPageData.reduce((oldRecord, newRecord) => {
-                if (newRecord.name) {
-                  oldRecord.push(
-                    <FoodCard
-                      key={newRecord._id}
-                      videoId={newRecord.videoId}
-                      title={newRecord.name}
-                      description={newRecord.videoTitle}
-                      displacement={newRecord.displacement}
-                      height={width > 600 ? 480 : 180}
-                      thumbnail={
-                        width > 600
-                          ? newRecord?.thumbnail?.large
-                          : newRecord?.thumbnail?.small
-                      }
-                    />
-                  );
-                }
-                return oldRecord;
-              }, [])}
               <Box
+                component={Container}
                 sx={{
-                  display: "flex",
-                  justifyContent: "center",
-                  marginTop: "1rem",
+                  maxWidth: "720px",
+                  justfyContent: "center",
+                  marginTop: "0.5rem",
                   marginBottom: "1rem",
                 }}
               >
-                <ToggleButtonGroup
-                  exclusive
-                  onChange={handleToggleChange}
-                  aria-label="text alignment"
+                {currentPageData.reduce((oldRecord, newRecord) => {
+                  if (newRecord.name) {
+                    oldRecord.push(
+                      <FoodCard
+                        key={newRecord._id}
+                        videoId={newRecord.videoId}
+                        title={newRecord.name}
+                        description={newRecord.videoTitle}
+                        displacement={newRecord.displacement}
+                        hasVeg={newRecord.hasVeg}
+                        height={width > 600 ? 480 : 180}
+                        thumbnail={
+                          width > 600
+                            ? newRecord?.thumbnail?.large
+                            : newRecord?.thumbnail?.small
+                        }
+                      />
+                    );
+                  }
+                  return oldRecord;
+                }, [])}
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "center",
+                    marginBottom: "1rem",
+                  }}
                 >
-                  <ToggleButton
-                    value="prev"
-                    aria-label="previous page"
-                    disabled={!prevPageEnabled}
+                  <ToggleButtonGroup
+                    exclusive
+                    onChange={handleToggleChange}
+                    aria-label="text alignment"
                   >
-                    PREV
-                  </ToggleButton>
-                  <ToggleButton
-                    value="page"
-                    aria-label="page"
-                    disabled
-                    sx={{ textTransform: "none" }}
-                  >
-                    {currentPageIndex + 1}/{data.length / pageSize}
-                  </ToggleButton>
-                  <ToggleButton
-                    value="next"
-                    aria-label="next page"
-                    disabled={!nextPageEnabled}
-                  >
-                    NEXT
-                  </ToggleButton>
-                </ToggleButtonGroup>
+                    <ToggleButton
+                      value="prev"
+                      aria-label="previous page"
+                      disabled={!prevPageEnabled}
+                    >
+                      PREV
+                    </ToggleButton>
+                    <ToggleButton
+                      value="page"
+                      aria-label="page"
+                      disabled
+                      sx={{ textTransform: "none" }}
+                    >
+                      {currentPageIndex + 1}/
+                      {Math.ceil(currentData.length / pageSize)}
+                    </ToggleButton>
+                    <ToggleButton
+                      value="next"
+                      aria-label="next page"
+                      disabled={!nextPageEnabled}
+                    >
+                      NEXT
+                    </ToggleButton>
+                  </ToggleButtonGroup>
+                </Box>
               </Box>
             </Box>
-          </Box>
+          </>
         ) : (
           <Box
             sx={{
