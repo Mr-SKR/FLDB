@@ -96,6 +96,12 @@ const faqs = [
     description:
       "No. These are the restaurants that have vegetarian options in the menu. They might or might not be pure vegetarian restaurants",
   },
+  {
+    qid: 16,
+    title: "What all can I search using the searchbar in homepage?",
+    description:
+      "Searchbar in homepage can be used to search for video title which in most cases includes restaurant name and location information. So you can search for video title, restaurant name or place if you remember any of these keywords partially",
+  },
 ];
 
 function About() {
