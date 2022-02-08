@@ -95,12 +95,7 @@ function NearBy() {
 
   const onFABClick = () => {
     if (fabText === "Veg") {
-      const result = data.reduce((oldRecord, newRecord) => {
-        if (newRecord.hasVeg) {
-          oldRecord.push({ ...newRecord });
-        }
-        return oldRecord;
-      }, []);
+      const result = data.filter((record) => record.hasVeg);
       setCurrentData(result);
       setFabText("All");
       setCurrentPageData(result.slice(0, pageSize));
