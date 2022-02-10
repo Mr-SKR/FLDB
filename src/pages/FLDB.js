@@ -22,6 +22,7 @@ import {
 } from "@mui/icons-material";
 import { useLocation } from "react-router-dom";
 import ReactPlayer from "react-player";
+import { DiscussionEmbed } from "disqus-react";
 
 import ResponsiveDrawer from "../components/headers/Header";
 import CustomAccordion from "../components/accordion/accordion";
@@ -207,6 +208,17 @@ function FLDB() {
               description={
                 data.videoDescription ? String(data.videoDescription) : "N/A"
               }
+            />
+          </Grid>
+
+          <Grid item xs={12}>
+            <DiscussionEmbed
+              shortname={process.env.REACT_APP_DISQUS_SHORTNAME}
+              config={{
+                url: process.env.REACT_APP_DISQUS_URL,
+                identifier: window.location.pathname.split("/")[2],
+                title: data.name ? data.name : data.videoTitle,
+              }}
             />
           </Grid>
         </Grid>
