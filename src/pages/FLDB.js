@@ -211,7 +211,7 @@ function FLDB() {
             />
           </Grid>
 
-          <Grid item xs={12}>
+          <Grid item xs={12} sx={{ marginLeft: "1rem", marginRight: "1rem" }}>
             <DiscussionEmbed
               shortname={process.env.REACT_APP_DISQUS_SHORTNAME}
               config={{
