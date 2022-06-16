@@ -8,6 +8,13 @@ Food Lovers Database(FLDb) is a collection of food Vlogs from [Food Lovers TV](h
 
 This repo contains code related to frontend that serves that uses APIs from backend [FLDB backend](https://github.com/Mr-SKR/fldb-apis). More info: https://fl-db.in/about
 
+## Features
+
+- Find restaurants based on your location
+- Find restaurants based on search results
+- Find restaurant information such as video review, google ratings, contact number, location name, maps link, operating hours and description
+- Comment and discuss on restaurant/video review of each restaurant
+
 ## Project Setup
 
 ### Install project dependencies
