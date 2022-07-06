@@ -212,11 +212,6 @@ function FLDB() {
           </Grid>
 
           <Grid item xs={12} sx={{ marginLeft: "1rem", marginRight: "1rem" }}>
-            {console.log({
-              url: window.location.href,
-              identifier: window.location.pathname.split("/")[2],
-              title: data.name ? data.name : data.videoTitle,
-            })}
             <DiscussionEmbed
               shortname={process.env.REACT_APP_DISQUS_SHORTNAME}
               config={{
