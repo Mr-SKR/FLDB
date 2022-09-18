@@ -1,3 +1,4 @@
+import React from "react";
 import { Box, Grid, Container } from "@mui/material";
 
 import ResponsiveDrawer from "../components/headers/Header";
@@ -104,9 +105,9 @@ const faqs = [
   },
 ];
 
-function About() {
+function About(): JSX.Element {
   return (
-    <>
+    <React.Fragment>
       <ResponsiveDrawer />
       <Box
         component={Container}
@@ -132,7 +133,7 @@ function About() {
           ))}
         </Grid>
       </Box>
-    </>
+    </React.Fragment>
   );
 }
 export default About;

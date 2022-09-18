@@ -1,4 +1,4 @@
-import { useState, Fragment } from "react";
+import React, { useState, Fragment } from "react";
 import AppBar from "@mui/material/AppBar";
 import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
@@ -16,13 +16,11 @@ import MenuIcon from "@mui/icons-material/Menu";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import { Link } from "react-router-dom";
-import { useTheme } from "@mui/material/styles";
 
-function ResponsiveDrawer(props) {
-  const { window } = props;
-  const theme = useTheme();
-  const drawerWidth = theme.custom.drawerWidth;
-  const [mobileOpen, setMobileOpen] = useState(false);
+function ResponsiveDrawer(): JSX.Element {
+  // const { window } = props;
+  const drawerWidth = 240;
+  const [mobileOpen, setMobileOpen] = useState<boolean>(false);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -58,11 +56,11 @@ function ResponsiveDrawer(props) {
     </div>
   );
 
-  const container =
-    window !== undefined ? () => window().document.body : undefined;
+  // const container =
+  //   window !== undefined ? () => window().document.body : undefined;
 
   return (
-    <>
+    <React.Fragment>
       <AppBar position="sticky">
         <Toolbar>
           <IconButton
@@ -98,7 +96,7 @@ function ResponsiveDrawer(props) {
         }}
       >
         <Drawer
-          container={container}
+          // container={container}
           variant="temporary"
           open={mobileOpen}
           onClose={handleDrawerToggle}
@@ -116,7 +114,7 @@ function ResponsiveDrawer(props) {
           {drawer}
         </Drawer>
       </Box>
-    </>
+    </React.Fragment>
   );
 }
 

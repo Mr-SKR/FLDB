@@ -1,4 +1,4 @@
-import * as React from "react";
+import React from "react";
 import {
   CardActionArea,
   Button,
@@ -10,9 +10,19 @@ import {
   Card,
 } from "@mui/material";
 
-export default function FoodCard(props) {
+interface FoodCardProps {
+  videoId: string;
+  height: number;
+  thumbnail: string;
+  title: string;
+  description: string;
+  displacement: number;
+  hasVeg: boolean;
+}
+
+export default function FoodCard(props: FoodCardProps): JSX.Element {
   return (
-    <>
+    <React.Fragment>
       <Card
         id={props.videoId}
         sx={{ textAlign: "center", marginBottom: "0.5rem" }}
@@ -50,6 +60,6 @@ export default function FoodCard(props) {
         </CardActions>
       </Card>
       <Divider />
-    </>
+    </React.Fragment>
   );
 }

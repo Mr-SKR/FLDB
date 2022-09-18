@@ -10,10 +10,10 @@ const customTheme = createTheme({
       main: green[500],
     },
   },
-  custom: {
-    drawerWidth: 240,
-    appbarHeight: { small: 56, large: 64 },
-  },
+  // custom: {
+  //   drawerWidth: 240,
+  //   appbarHeight: { small: 56, large: 64 },
+  // },
 });
 
 export default customTheme;

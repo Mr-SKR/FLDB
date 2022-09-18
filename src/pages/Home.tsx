@@ -1,4 +1,4 @@
-import { useState, useEffect, forwardRef } from "react";
+import React, { useState, useEffect, forwardRef } from "react";
 import Box from "@mui/material/Box";
 import Grid from "@mui/material/Grid";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -7,29 +7,35 @@ import TextField from "@mui/material/TextField";
 import Autocomplete from "@mui/material/Autocomplete";
 import Button from "@mui/material/Button";
 import Snackbar from "@mui/material/Snackbar";
-import MuiAlert from "@mui/material/Alert";
+import MuiAlert, { AlertProps } from "@mui/material/Alert";
 import logo from "../assets/img/walking-chef.gif";
 import ResponsiveDrawer from "../components/headers/Header";
 import windowDimensions from "../utils/windowDimensions";
-import { useTheme } from "@emotion/react";
 import { Link } from "react-router-dom";
 
-const axios = require("axios").default;
+// const axios = require("axios").default;
+import axios from "axios";
+import { VideoInterface } from "../types/types";
 
-const Alert = forwardRef(function Alert(props, ref) {
+const Alert = forwardRef<HTMLDivElement, AlertProps>(function Alert(
+  props,
+  ref
+) {
   return <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />;
 });
 
-function Home() {
+function Home(): JSX.Element {
   const { width } = windowDimensions();
-  const theme = useTheme();
-  const [searchValue, setSearchValue] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState([]);
-  const [loadingMessage, setLoadingMessage] = useState(null);
-  const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [searchValue, setSearchValue] = useState<{ videoId?: string }>({});
+  const [loading, setLoading] = useState<boolean>(true);
+  const [data, setData] = useState<VideoInterface[]>([]);
+  const [loadingMessage, setLoadingMessage] = useState<string>("");
+  const [openSnackbar, setOpenSnackbar] = useState<boolean>(false);
 
-  const handleSnackbarClose = (event, reason) => {
+  const handleSnackbarClose = (
+    _event?: React.SyntheticEvent | Event,
+    reason?: string
+  ) => {
     if (reason === "clickaway") {
       return;
     }
@@ -48,31 +54,33 @@ function Home() {
             timeout: 10000,
           }
         );
-        const sortedData = response.sort((a, b) => {
-          const nameA = a.videoTitle.toUpperCase();
-          const nameB = b.videoTitle.toUpperCase();
-          if (nameA < nameB) {
-            return -1;
+        const sortedData = response.sort(
+          (a: { videoTitle: string }, b: { videoTitle: string }) => {
+            const nameA = a.videoTitle.toUpperCase();
+            const nameB = b.videoTitle.toUpperCase();
+            if (nameA < nameB) {
+              return -1;
+            }
+            if (nameA > nameB) {
+              return 1;
+            }
+            return 0;
           }
-          if (nameA > nameB) {
-            return 1;
-          }
-          return 0;
-        });
+        );
         setData(sortedData);
       } catch (error) {
         setOpenSnackbar(true);
-        console.error(error.message);
+        console.error((error as Error).message);
       }
       setLoading(false);
-      setLoadingMessage(null);
+      setLoadingMessage("");
     };
 
     fetchData();
   }, []);
 
   return loading ? (
-    <>
+    <React.Fragment>
       <Box
         sx={{
           display: "flex",
@@ -85,9 +93,9 @@ function Home() {
         <CircularProgress />
         <Typography>{loadingMessage}</Typography>
       </Box>
-    </>
+    </React.Fragment>
   ) : (
-    <>
+    <React.Fragment>
       <ResponsiveDrawer />
       <Grid
         container
@@ -96,15 +104,16 @@ function Home() {
         alignItems="center"
         spacing={2}
         sx={{
-          height: `calc(100vh - ${
-            width >= 600
-              ? theme.custom.appbarHeight.large
-              : theme.custom.appbarHeight.small
-          }px)`,
+          height: `calc(100vh - ${width >= 600 ? 64 : 56}px)`,
         }}
       >
         <Grid item>
-          <img src={logo} alt="logo" max-width="60vw" height="auto" />
+          <img
+            src={logo}
+            alt="logo"
+            height="auto"
+            // style="max-width:60vw;height:auto"
+          />
         </Grid>
         <Grid
           item
@@ -119,12 +128,16 @@ function Home() {
               sx={{ width: "70vw", maxWidth: "40rem" }}
               id="search-box"
               options={data}
-              getOptionLabel={(option) => option.videoTitle}
+              getOptionLabel={(option: {
+                videoTitle: string;
+                title: string;
+                videoId: string;
+              }) => option.videoTitle}
               isOptionEqualToValue={(option, value) =>
                 option.title === value.title
               }
               onChange={(_event, newSearchValue) => {
-                setSearchValue(newSearchValue);
+                setSearchValue(newSearchValue || {});
               }}
               renderInput={(params) => (
                 <TextField {...params} label="Select restaurant" />
@@ -137,7 +150,7 @@ function Home() {
               sx={{ height: "56px" }}
               onClick={() => {
                 if (searchValue.videoId) {
-                  window.location = "/fldb/" + String(searchValue.videoId);
+                  window.location.href = "/fldb/" + String(searchValue.videoId);
                 }
               }}
             >
@@ -153,7 +166,7 @@ function Home() {
             to="/nearby"
             onClick={() => {
               if (searchValue.videoId) {
-                window.location = "/fldb/" + String(searchValue.videoId);
+                window.location.href = "/fldb/" + String(searchValue.videoId);
               }
             }}
           >
@@ -174,7 +187,7 @@ function Home() {
           Request timed out. Try again
         </Alert>
       </Snackbar>
-    </>
+    </React.Fragment>
   );
 }
 

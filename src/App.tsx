@@ -6,7 +6,7 @@ import About from "./pages/About";
 import NearBy from "./pages/NearBy";
 import FLDB from "./pages/FLDB";
 
-function App() {
+function App(): JSX.Element {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
