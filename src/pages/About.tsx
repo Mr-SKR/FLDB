@@ -52,7 +52,7 @@ const faqs = [
     qid: 8,
     title: "How will FLDb sustain without making any money?",
     description:
-      "This site depends on a bunch of free services offered by companies like Heroku.com, Netlify.com, GitHub.com and MongoDB.com. The only things that can't be obtained for free is the domain ownership and a bunch of API calls made to Google Places API which I am ready to bear myself. I will continue to keep this site free from ads, promotions, sponsorships etc., as long as it doesn't punch a hole in my pocket",
+      "This site depends on a bunch of free services offered by companies like Render.com, Netlify.com, GitHub.com and MongoDB.com. The only things that can't be obtained for free is the domain ownership and a bunch of API calls made to Google Places API which I am ready to bear myself. I will continue to keep this site free from ads, promotions, sponsorships etc., as long as it doesn't punch a hole in my pocket",
   },
   {
     qid: 9,
@@ -64,7 +64,7 @@ const faqs = [
     qid: 10,
     title: "Is this site highly available or scalable?",
     description:
-      "Nope. This site depends on a bunch of free services offered by companies like Heroku.com, Netlify.com, GitHub.com and MongoDB.com. These free services can't guarantee high availability and scalability. Since I do not expect a high amount of traffic flowing to this site, this site should manage just fine. My load testing results say that 30 concurrent users can use this site without facing any issues",
+      "Nope. This site depends on a bunch of free services offered by companies like Render.com, Netlify.com, GitHub.com and MongoDB.com. These free services can't guarantee high availability and scalability. Since I do not expect a high amount of traffic flowing to this site, this site should manage just fine. My load testing results say that 30 concurrent users can use this site without facing any issues",
   },
   {
     qid: 11,

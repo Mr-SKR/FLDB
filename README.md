@@ -1,3 +1,5 @@
+[![Build Status](https://api.netlify.com/api/v1/badges/70ee4bbe-c76d-455f-a5c6-c26023d739cd/deploy-status)](https://app.netlify.com/sites/fl-db/deploys)
+
 # Food loveers Database (FLDb)
 
 Webiste: [FLDb](https://fl-db.in)
@@ -14,6 +16,13 @@ This repo contains code related to frontend that serves that uses APIs from back
 - Find restaurants based on search results
 - Find restaurant information such as video review, google ratings, contact number, location name, maps link, operating hours and description
 - Comment and discuss on restaurant/video review of each restaurant
+
+## Tech Stack (Front-end only)
+
+- [React](https://reactjs.org/): Front-end library
+- [TypeScript](https://www.typescriptlang.org/): Programming language
+- [MUI](https://mui.com/): Design library
+- [Netlify](https://www.netlify.com/): Hosting and Deployment platform
 
 ## Project Setup
 
