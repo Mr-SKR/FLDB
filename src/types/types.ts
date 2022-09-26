@@ -30,6 +30,7 @@ interface SearchIndexInterface {
   _id: string;
   videoId: string;
   videoTitle: string;
+  title: string;
 }
 
 export type { VideoInterface, SearchIndexInterface };

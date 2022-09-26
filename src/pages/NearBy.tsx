@@ -7,6 +7,8 @@ import MuiAlert, { AlertProps } from "@mui/material/Alert";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Fab from "@mui/material/Fab";
+import Tooltip from "@mui/material/Tooltip";
+import axios from "axios";
 
 import FoodCard from "../components/cards/card";
 import {
@@ -18,8 +20,17 @@ import { getDisplacementFromLatLonInKm } from "../utils/getGeoDisplacement";
 import windowDimensions from "../utils/windowDimensions";
 import { VideoInterface } from "../types/types";
 
-// const axios = require("axios").default;
-import axios from "axios";
+import { useAppSelector, useAppDispatch } from "../hooks";
+import {
+  setVideos,
+  setCurrentVideos,
+  setCurrentPageVideos,
+  setCurrentPage,
+  nextPage,
+  prevPage,
+} from "../features/video/videoSlice";
+
+import { PAGE_SIZE } from "../config/constants";
 
 const Alert = forwardRef<HTMLDivElement, AlertProps>(function Alert(
   props,
@@ -29,21 +40,22 @@ const Alert = forwardRef<HTMLDivElement, AlertProps>(function Alert(
 });
 
 function NearBy(): JSX.Element {
-  const pageSize = 10;
   const { width } = windowDimensions();
   const [userLocation, setUserLocation] = useState<GeolocationPosition>();
   const [locationPermission, setLocationPermission] = useState<string>("");
   const [dataLoading, setDataLoading] = useState(false);
   const [locationComputing, setLocationComputing] = useState(false);
-  const [data, setData] = useState<VideoInterface[]>([]);
-  const [currentData, setCurrentData] = useState<VideoInterface[]>([]);
-  const [currentPageData, setCurrentPageData] = useState<VideoInterface[]>([]);
-  const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState<string>("");
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [prevPageEnabled, setPrevPageEnabled] = useState(false);
   const [nextPageEnabled, setNextPageEnabled] = useState(true);
   const [fabText, setFabText] = useState("Veg");
+
+  const dispatch = useAppDispatch();
+  const videoSelector = useAppSelector((state) => state.videos);
+  const currentVideos: VideoInterface[] = videoSelector.currentVideos;
+  const currentPageVideos: VideoInterface[] = videoSelector.currentPageVideos;
+  const currentPage: number = videoSelector.currentPage;
 
   const handleToggleChange = (event: React.MouseEvent<HTMLElement>) => {
     if ((event.target as HTMLInputElement).value === "next")
@@ -64,35 +76,23 @@ function NearBy(): JSX.Element {
   };
 
   const handleNextPageClick = () => {
-    if ((currentPageIndex + 1) * pageSize < currentData.length) {
-      setCurrentPageData(
-        currentData.slice(
-          (currentPageIndex + 1) * pageSize,
-          (currentPageIndex + 2) * pageSize
-        )
-      );
-      setCurrentPageIndex(currentPageIndex + 1);
+    if ((currentPage + 1) * PAGE_SIZE < currentVideos.length) {
+      dispatch(nextPage());
       setPrevPageEnabled(true);
       window.scrollTo(0, 0);
     }
-    if ((currentPageIndex + 2) * pageSize >= currentData.length) {
+    if ((currentPage + 2) * PAGE_SIZE >= currentVideos.length) {
       setNextPageEnabled(false);
     }
   };
 
   const handlePrevPageClick = () => {
-    if (currentPageIndex - 1 >= 0) {
-      setCurrentPageData(
-        currentData.slice(
-          (currentPageIndex - 1) * pageSize,
-          currentPageIndex * pageSize
-        )
-      );
-      setCurrentPageIndex(currentPageIndex - 1);
+    if (currentPage - 1 >= 0) {
+      dispatch(prevPage());
       setNextPageEnabled(true);
       window.scrollTo(0, 0);
     }
-    if (currentPageIndex - 1 === 0) {
+    if (currentPage - 1 === 0) {
       setPrevPageEnabled(false);
     }
   };
@@ -104,21 +104,23 @@ function NearBy(): JSX.Element {
 
   const onFABClick = () => {
     if (fabText === "Veg") {
-      const result = data.filter((record) => record.hasVeg);
-      setCurrentData(result);
+      const result = videoSelector.videos.filter(
+        (record: VideoInterface) => record.hasVeg
+      );
+      dispatch(setCurrentVideos(result));
       setFabText("All");
-      setCurrentPageData(result.slice(0, pageSize));
-      setCurrentPageIndex(0);
+      dispatch(setCurrentPageVideos(result.slice(0, PAGE_SIZE)));
+      dispatch(setCurrentPage(0));
     } else {
-      setCurrentData(data);
+      dispatch(setCurrentVideos(videoSelector.videos));
       setFabText("Veg");
-      setCurrentPageData(data.slice(0, pageSize));
-      setCurrentPageIndex(0);
+      dispatch(setCurrentPageVideos(videoSelector.videos.slice(0, PAGE_SIZE)));
+      dispatch(setCurrentPage(0));
     }
   };
 
   useEffect(() => {
-    (async () => {
+    const setData = async () => {
       setLocationComputing(true);
       setLoadingMessage("Obtaining user location");
       let currentLocation: GeolocationPosition;
@@ -175,9 +177,9 @@ function NearBy(): JSX.Element {
           const sortedData = result.sort(
             (a, b) => a.displacement - b.displacement
           );
-          setData(sortedData);
-          setCurrentData(sortedData);
-          setCurrentPageData(sortedData.slice(0, pageSize));
+          dispatch(setVideos(sortedData));
+          dispatch(setCurrentVideos(sortedData));
+          dispatch(setCurrentPageVideos(sortedData.slice(0, PAGE_SIZE)));
           setDataLoading(false);
           setLoadingMessage("");
         }
@@ -188,7 +190,9 @@ function NearBy(): JSX.Element {
         setOpenSnackbar(true);
         return;
       }
-    })();
+    };
+
+    setData();
   }, []);
 
   if (locationPermission === "denied" || !userLocation) {
@@ -246,22 +250,26 @@ function NearBy(): JSX.Element {
             Request timed out. Try again
           </Alert>
         </Snackbar>
-        {currentData.length && (
-          <Fab
-            aria-label="veg-toggle"
-            color={fabText === "Veg" ? "secondary" : "primary"}
-            onClick={onFABClick}
-            sx={{
-              position: "fixed",
-              bottom: 20,
-              right: 20,
-              zIndex: 1,
-            }}
+        {currentVideos.length && (
+          <Tooltip
+            title={fabText === "Veg" ? "Show me veg options" : "Show me all"}
           >
-            {fabText}
-          </Fab>
+            <Fab
+              aria-label="veg-toggle"
+              color={fabText === "Veg" ? "secondary" : "primary"}
+              onClick={onFABClick}
+              sx={{
+                position: "fixed",
+                bottom: 20,
+                right: 20,
+                zIndex: 1,
+              }}
+            >
+              {fabText}
+            </Fab>
+          </Tooltip>
         )}
-        {currentData.length ? (
+        {currentVideos.length ? (
           <React.Fragment>
             <Box
               sx={{
@@ -279,7 +287,7 @@ function NearBy(): JSX.Element {
                   marginBottom: "1rem",
                 }}
               >
-                {currentPageData.reduce(
+                {currentPageVideos.reduce(
                   (oldRecord: JSX.Element[], newRecord) => {
                     if (newRecord.name) {
                       oldRecord.push(
@@ -328,8 +336,8 @@ function NearBy(): JSX.Element {
                       disabled
                       sx={{ textTransform: "none" }}
                     >
-                      {currentPageIndex + 1}/
-                      {Math.ceil(currentData.length / pageSize)}
+                      {currentPage + 1}/
+                      {Math.ceil(currentVideos.length / PAGE_SIZE)}
                     </ToggleButton>
                     <ToggleButton
                       value="next"

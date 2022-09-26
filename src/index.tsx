@@ -3,9 +3,13 @@ import ReactDOM from "react-dom";
 import { ThemeProvider } from "@mui/system";
 import { BrowserRouter } from "react-router-dom";
 import CssBaseline from "@mui/material/CssBaseline";
+import { Provider } from "react-redux";
+
 import customTheme from "./components/ui/Theme";
 import "./index.css";
 import App from "./App";
+
+import { store } from "./store";
 // import reportWebVitals from "./reportWebVitals";
 
 ReactDOM.render(
@@ -13,7 +17,9 @@ ReactDOM.render(
     <BrowserRouter>
       <CssBaseline />
       <ThemeProvider theme={customTheme}>
-        <App />
+        <Provider store={store}>
+          <App />
+        </Provider>
       </ThemeProvider>
     </BrowserRouter>
   </React.StrictMode>,

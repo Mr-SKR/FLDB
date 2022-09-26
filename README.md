@@ -23,6 +23,7 @@ This repo contains code related to frontend that serves that uses APIs from back
 - [TypeScript](https://www.typescriptlang.org/): Programming language
 - [MUI](https://mui.com/): Design library
 - [Netlify](https://www.netlify.com/): Hosting and Deployment platform
+- [React Redux](https://react-redux.js.org/): Global state management (Probably overkill for this project)
 
 ## Project Setup
 
