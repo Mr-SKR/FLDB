@@ -18,6 +18,8 @@ interface FoodCardProps {
   description: string;
   displacement: number;
   hasVeg: boolean;
+  useLocation: boolean;
+  setUseLocation: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export default function FoodCard(props: FoodCardProps): JSX.Element {
@@ -43,10 +45,19 @@ export default function FoodCard(props: FoodCardProps): JSX.Element {
             </Typography>
           </CardContent>
         </CardActionArea>
+
         <CardActions sx={{ justifyContent: "center" }}>
-          <Button size="medium" sx={{ textTransform: "none" }}>
+          <Button
+            size="medium"
+            sx={{ textTransform: "none" }}
+            onClick={() => {
+              if (!props.useLocation) props.setUseLocation(true);
+            }}
+          >
             Displacement:{" "}
-            {props.displacement ? `${props.displacement} Km` : "N/A"}
+            {props.displacement
+              ? `${props.displacement} Km`
+              : "Enable location"}
           </Button>
           {props.hasVeg && (
             <Button

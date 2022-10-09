@@ -21,9 +21,10 @@ This repo contains code related to frontend that serves that uses APIs from back
 
 - [React](https://reactjs.org/): Front-end library
 - [TypeScript](https://www.typescriptlang.org/): Programming language
+- [NextJS](https://nextjs.org/): Production ready react framework for SSR, SSG et.,
 - [MUI](https://mui.com/): Design library
 - [Netlify](https://www.netlify.com/): Hosting and Deployment platform
-- [React Redux](https://react-redux.js.org/): Global state management (Probably overkill for this project)
+- [React Redux](https://react-redux.js.org/): Global state management (Probably overkill for this project). Update: Removed redux from this project
 
 ## Project Setup
 
@@ -40,12 +41,11 @@ yarn
 ### Set environment variables
 
 Create a `.env` file at the root of the project folder and populate appropriate values for below keys.
-REACT_APP_FLDB_API_BASE_URL is the URL of [backend API server](https://github.com/Mr-SKR/fldb-apis)
+NEXT_PUBLIC_FLDB_API_BASE_URL is the URL of [backend API server](https://github.com/Mr-SKR/fldb-apis)
 
 ```
-REACT_APP_FLDB_API_BASE_URL=<YOUR FLDB_API_BASE_URL>
-REACT_APP_GOOGLE_MAPS_KEY=<YOUR_GOOGLE_MAPS_API_KEY>
-REACT_APP_DISQUS_SHORTNAME=<YOUR_DISQUS_SHORTNAME>
+NEXT_PUBLIC_FLDB_API_BASE_URL=<YOUR FLDB_API_BASE_URL>
+NEXT_PUBLIC_DISQUS_SHORTNAME=<YOUR_DISQUS_SHORTNAME>
 ```
 
 For Localhost only:

@@ -10,6 +10,24 @@ const customTheme = createTheme({
       main: green[500],
     },
   },
+  components: {
+    MuiTypography: {
+      defaultProps: {
+        variantMapping: {
+          h1: "h1",
+          h2: "h2",
+          h3: "h3",
+          h4: "h4",
+          h5: "h1",
+          h6: "h2",
+          subtitle1: "h5",
+          subtitle2: "h6",
+          body1: "p",
+          body2: "p",
+        },
+      },
+    },
+  },
   // custom: {
   //   drawerWidth: 240,
   //   appbarHeight: { small: 56, large: 64 },

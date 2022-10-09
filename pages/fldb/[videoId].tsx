@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import {
   Typography,
   Grid,
@@ -11,7 +11,6 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
-  CircularProgress,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import {
@@ -20,56 +19,43 @@ import {
   LocationOn as LocationOnIcon,
   Phone as PhoneIcon,
 } from "@mui/icons-material";
-import { useLocation } from "react-router-dom";
+import { useRouter } from "next/router";
 import ReactPlayer from "react-player";
 import { DiscussionEmbed } from "disqus-react";
-
-import ResponsiveDrawer from "../components/headers/Header";
-import CustomAccordion from "../components/accordion/accordion";
-import { VideoInterface } from "../types/types";
-
-// const axios = require("axios").default;
+import Head from "next/head";
 import axios from "axios";
 
-function FLDB(): JSX.Element {
-  const location = useLocation();
-  const videoId = location.pathname.split("/")[2];
+import ResponsiveDrawer from "../../components/headers/Header";
+import CustomAccordion from "../../components/accordion/accordion";
+import { VideoInterface } from "../../types/types";
+import { getAllVideoIds } from "../../utils/video";
 
-  const [loading, setLoading] = useState<boolean>(true);
-  const [data, setData] = useState<VideoInterface>();
+interface FLDBProps {
+  videoId: string;
+  data: VideoInterface;
+  host: string;
+}
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const { data: response } = await axios.get(
-          process.env.REACT_APP_FLDB_API_BASE_URL + "/videos/" + String(videoId)
-        );
-        setData(response);
-      } catch (error) {
-        console.error((error as Error).message);
-      }
-      setLoading(false);
-    };
+function FLDB(props: FLDBProps): JSX.Element {
+  const router = useRouter();
+  const { videoId, data, host } = props;
 
-    fetchData();
-  }, [videoId]);
-
-  return loading ? (
+  return (
     <React.Fragment>
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          height: "100vh",
-        }}
-      >
-        <CircularProgress />
-      </Box>
-    </React.Fragment>
-  ) : (
-    <React.Fragment>
+      <Head>
+        <title>
+          {data?.name ? `FLDb: ${data.name}` : "Food Lovers Database (FLDb)"}
+        </title>
+        <meta
+          name="description"
+          content={
+            data?.videoTitle
+              ? `FLDb: ${data.videoTitle}`
+              : "Food Lovers Database (FLDb)"
+          }
+          key="description"
+        />
+      </Head>
       <ResponsiveDrawer />
       <Box
         component={Container}
@@ -217,11 +203,11 @@ function FLDB(): JSX.Element {
             <Grid item xs={12} sx={{ marginLeft: "1rem", marginRight: "1rem" }}>
               <DiscussionEmbed
                 shortname={
-                  process.env.REACT_APP_DISQUS_SHORTNAME || "disqus-shortname"
+                  process.env.NEXT_PUBLIC_DISQUS_SHORTNAME || "disqus-shortname"
                 }
                 config={{
-                  url: window.location.href,
-                  identifier: window.location.pathname.split("/")[2],
+                  url: host + router.asPath,
+                  identifier: router.asPath.split("/")[2],
                   title: data.name ? data.name : data.videoTitle,
                 }}
               />
@@ -232,5 +218,41 @@ function FLDB(): JSX.Element {
     </React.Fragment>
   );
 }
+
+interface GetStaticPathParam {
+  params: {
+    videoId: string;
+  };
+}
+
+interface GetStaticPathsReturn {
+  paths: GetStaticPathParam[];
+  fallback: string | boolean;
+}
+
+export const getStaticPaths = async (): Promise<GetStaticPathsReturn> => {
+  const videoIds = await getAllVideoIds();
+  return {
+    paths: videoIds.map((videoId) => {
+      return { params: { videoId: videoId } };
+    }),
+    fallback: true, // can be true or false or 'blocking'
+  };
+};
+
+interface GetStaticPropsContext {
+  params: { videoId: string };
+}
+
+export const getStaticProps = async (context: GetStaticPropsContext) => {
+  const { videoId }: { videoId: string } = context.params;
+  const { data } = await axios.get(
+    process.env.NEXT_PUBLIC_FLDB_API_BASE_URL + "/videos/" + String(videoId)
+  );
+  const host = process.env.HOST;
+  return {
+    props: { videoId, data, host },
+  };
+};
 
 export default FLDB;

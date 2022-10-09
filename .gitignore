@@ -28,3 +28,9 @@ yarn-error.log*
 
 # Certs
 *.pem
+
+# NextJS
+.next
+
+# Old public folder
+public-old/

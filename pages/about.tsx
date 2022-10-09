@@ -1,5 +1,6 @@
 import React from "react";
 import { Box, Grid, Container } from "@mui/material";
+import Head from "next/head";
 
 import ResponsiveDrawer from "../components/headers/Header";
 import CustomAccordion from "../components/accordion/accordion";
@@ -108,6 +109,14 @@ const faqs = [
 function About(): JSX.Element {
   return (
     <React.Fragment>
+      <Head>
+        <title>About FLDb</title>
+        <meta
+          name="description"
+          content="About Food Lovers Database (FLDb)"
+          key="description"
+        />
+      </Head>
       <ResponsiveDrawer />
       <Box
         component={Container}
