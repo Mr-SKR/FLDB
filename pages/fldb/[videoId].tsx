@@ -21,6 +21,8 @@ import {
 } from "@mui/icons-material";
 import { useRouter } from "next/router";
 import ReactPlayer from "react-player";
+import { useTheme } from "@mui/material/styles";
+import useMediaQuery from "@mui/material/useMediaQuery";
 import { DiscussionEmbed } from "disqus-react";
 import Head from "next/head";
 import axios from "axios";
@@ -39,6 +41,9 @@ interface FLDBProps {
 function FLDB(props: FLDBProps): JSX.Element {
   const router = useRouter();
   const { videoId, data, host } = props;
+
+  const theme = useTheme();
+  const isLargeScreen = useMediaQuery(theme.breakpoints.up("lg"));
 
   return (
     <React.Fragment>
@@ -67,7 +72,15 @@ function FLDB(props: FLDBProps): JSX.Element {
       >
         {data && (
           <Grid container spacing={2} sx={{ justifyContent: "center" }}>
-            <Grid item xs={12} md={6} sx={{ width: "480px", height: "20rem" }}>
+            <Grid
+              item
+              xs={12}
+              md={6}
+              sx={{
+                width: `${isLargeScreen ? 640 : 360}px`,
+                height: `${isLargeScreen ? 360 : 270}px`,
+              }}
+            >
               <ReactPlayer
                 url={`https://www.youtube.com/watch?v=${videoId}`}
                 width="100%"

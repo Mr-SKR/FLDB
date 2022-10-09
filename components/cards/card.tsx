@@ -45,7 +45,7 @@ export default function FoodCard(props: FoodCardProps): JSX.Element {
                 alt={props.title ? props.title : "No image found"}
                 layout="fill"
                 objectFit="cover"
-                priority={props.index < 3 ? true : false}
+                priority={props.index < 2 ? true : false}
               />
             </div>
           </CardMedia>

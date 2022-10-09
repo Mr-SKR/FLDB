@@ -496,7 +496,7 @@ export const getStaticProps = async () => {
   });
   return {
     props: { data: sortedData },
-    revalidate: 10,
+    revalidate: 60,
   };
 };
 
