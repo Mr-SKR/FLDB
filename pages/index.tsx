@@ -264,147 +264,148 @@ function Home(props: HomeProps): JSX.Element {
           {alertMessage}
         </Alert>
       </Snackbar>
-      {currentVideos.length ? (
-        <React.Fragment>
+
+      <React.Fragment>
+        <Box
+          sx={{
+            display: "flex",
+            justfyContent: "center",
+            alignItems: "center",
+          }}
+        >
           <Box
+            component={Container}
             sx={{
-              display: "flex",
+              maxWidth: "720px",
               justfyContent: "center",
-              alignItems: "center",
+              marginTop: "0.5rem",
+              marginBottom: "1rem",
             }}
           >
-            <Box
-              component={Container}
-              sx={{
-                maxWidth: "720px",
-                justfyContent: "center",
-                marginTop: "0.5rem",
-                marginBottom: "1rem",
-              }}
-            >
-              <Accordion expanded sx={{ mb: "1rem" }}>
-                <AccordionSummary
-                  expandIcon={<TuneIcon />}
-                  aria-controls="filters"
-                  id="filters"
+            <Accordion expanded sx={{ mb: "1rem" }}>
+              <AccordionSummary
+                expandIcon={<TuneIcon />}
+                aria-controls="filters"
+                id="filters"
+              >
+                <Typography
+                  align="center"
+                  variant="h6"
+                  sx={{
+                    width: "100%",
+                    fontWeight: "bold",
+                  }}
                 >
-                  <Typography
-                    align="center"
-                    variant="h6"
-                    sx={{
-                      width: "100%",
-                      fontWeight: "bold",
-                    }}
-                  >
-                    Food Lovers Database (FLDb)
-                  </Typography>
-                </AccordionSummary>
-                <AccordionDetails>
-                  <Box>
-                    <Grid container>
-                      <Grid item xs={12}>
-                        <TextField
-                          id="outlined-basic"
-                          label="Search by restaurant name, video title etc.,"
-                          variant="outlined"
-                          sx={{ width: "100%", mb: "2rem" }}
-                          value={searchValue}
-                          onChange={(e) => {
-                            setSearchValue(e.target.value);
-                          }}
+                  Food Lovers Database (FLDb)
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Box>
+                  <Grid container>
+                    <Grid item xs={12}>
+                      <TextField
+                        id="outlined-basic"
+                        label="Search by restaurant name, video title etc.,"
+                        variant="outlined"
+                        sx={{ width: "100%", mb: "2rem" }}
+                        value={searchValue}
+                        onChange={(e) => {
+                          setSearchValue(e.target.value);
+                        }}
+                      />
+                    </Grid>
+                    <Grid
+                      item
+                      container
+                      xs={12}
+                      sm={6}
+                      direction="row"
+                      justifyContent="center"
+                      alignItems="center"
+                    >
+                      <Grid item>
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              value={useLocation}
+                              checked={userLocation ? true : false}
+                              onChange={() => {
+                                if (userLocation) {
+                                  setUserLocation(null);
+                                  setUseLocation(false);
+                                  sessionStorage.removeItem("userLocation");
+                                } else {
+                                  setUseLocation(true);
+                                }
+                              }}
+                            />
+                          }
+                          label="Enable location access"
                         />
                       </Grid>
-                      <Grid
-                        item
-                        container
-                        xs={12}
-                        sm={6}
-                        direction="row"
-                        justifyContent="center"
-                        alignItems="center"
-                      >
-                        <Grid item>
-                          <FormControlLabel
-                            control={
-                              <Switch
-                                value={useLocation}
-                                checked={userLocation ? true : false}
-                                onChange={() => {
-                                  if (userLocation) {
-                                    setUserLocation(null);
-                                    setUseLocation(false);
-                                    sessionStorage.removeItem("userLocation");
-                                  } else {
-                                    setUseLocation(true);
-                                  }
-                                }}
-                              />
-                            }
-                            label="Enable location access"
-                          />
-                        </Grid>
-                      </Grid>
-                      <Grid
-                        item
-                        container
-                        xs={12}
-                        sm={6}
-                        direction="row"
-                        justifyContent="center"
-                        alignItems="center"
-                      >
-                        <Grid item>
-                          <FormControlLabel
-                            control={
-                              <Switch
-                                value={hasVeg}
-                                checked={hasVeg}
-                                onChange={() => {
-                                  setHasVeg(!hasVeg);
-                                }}
-                              />
-                            }
-                            label="Veg friendly restaurant"
-                          />
-                        </Grid>
-                      </Grid>
-                      {lastUpdated && userLocation ? (
-                        <Grid
-                          item
-                          container
-                          xs={12}
-                          direction="row"
-                          justifyContent="center"
-                          alignItems="center"
-                          sx={{ mt: "2rem" }}
-                        >
-                          <small>
-                            {`Location last updated: ${new Date(
-                              lastUpdated
-                            ).toLocaleString()}`}
-                          </small>
-
-                          <IconButton
-                            onClick={() => {
-                              if (!userLocation) {
-                                setAlertMessage(
-                                  "Enable location access to refresh"
-                                );
-                                setOpenSnackbar(true);
-                              } else {
-                                setUseLocation(true);
-                              }
-                            }}
-                          >
-                            <RotateLeftIcon />
-                          </IconButton>
-                        </Grid>
-                      ) : null}
                     </Grid>
-                  </Box>
-                </AccordionDetails>
-              </Accordion>
-              {currentPageVideos.reduce(
+                    <Grid
+                      item
+                      container
+                      xs={12}
+                      sm={6}
+                      direction="row"
+                      justifyContent="center"
+                      alignItems="center"
+                    >
+                      <Grid item>
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              value={hasVeg}
+                              checked={hasVeg}
+                              onChange={() => {
+                                setHasVeg(!hasVeg);
+                              }}
+                            />
+                          }
+                          label="Veg friendly restaurant"
+                        />
+                      </Grid>
+                    </Grid>
+                    {lastUpdated && userLocation ? (
+                      <Grid
+                        item
+                        container
+                        xs={12}
+                        direction="row"
+                        justifyContent="center"
+                        alignItems="center"
+                        sx={{ mt: "2rem" }}
+                      >
+                        <small>
+                          {`Location last updated: ${new Date(
+                            lastUpdated
+                          ).toLocaleString()}`}
+                        </small>
+
+                        <IconButton
+                          onClick={() => {
+                            if (!userLocation) {
+                              setAlertMessage(
+                                "Enable location access to refresh"
+                              );
+                              setOpenSnackbar(true);
+                            } else {
+                              setUseLocation(true);
+                            }
+                          }}
+                        >
+                          <RotateLeftIcon />
+                        </IconButton>
+                      </Grid>
+                    ) : null}
+                  </Grid>
+                </Box>
+              </AccordionDetails>
+            </Accordion>
+            {currentVideos.length ? (
+              currentPageVideos.reduce(
                 (oldRecord: JSX.Element[], newRecord) => {
                   if (newRecord.name) {
                     oldRecord.push(
@@ -429,50 +430,50 @@ function Home(props: HomeProps): JSX.Element {
                   return oldRecord;
                 },
                 []
-              )}
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "center",
-                  marginBottom: "1rem",
-                }}
+              )
+            ) : (
+              <React.Fragment></React.Fragment>
+            )}
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                marginBottom: "1rem",
+              }}
+            >
+              <ToggleButtonGroup
+                exclusive
+                onChange={handleToggleChange}
+                aria-label="text alignment"
               >
-                <ToggleButtonGroup
-                  exclusive
-                  onChange={handleToggleChange}
-                  aria-label="text alignment"
+                <ToggleButton
+                  value="prev"
+                  aria-label="previous page"
+                  disabled={!prevPageEnabled}
                 >
-                  <ToggleButton
-                    value="prev"
-                    aria-label="previous page"
-                    disabled={!prevPageEnabled}
-                  >
-                    PREV
-                  </ToggleButton>
-                  <ToggleButton
-                    value="page"
-                    aria-label="page"
-                    disabled
-                    sx={{ textTransform: "none" }}
-                  >
-                    {currentPage + 1}/
-                    {Math.ceil(currentVideos.length / PAGE_SIZE)}
-                  </ToggleButton>
-                  <ToggleButton
-                    value="next"
-                    aria-label="next page"
-                    disabled={!nextPageEnabled}
-                  >
-                    NEXT
-                  </ToggleButton>
-                </ToggleButtonGroup>
-              </Box>
+                  PREV
+                </ToggleButton>
+                <ToggleButton
+                  value="page"
+                  aria-label="page"
+                  disabled
+                  sx={{ textTransform: "none" }}
+                >
+                  {currentPage + 1}/
+                  {Math.ceil(currentVideos.length / PAGE_SIZE)}
+                </ToggleButton>
+                <ToggleButton
+                  value="next"
+                  aria-label="next page"
+                  disabled={!nextPageEnabled}
+                >
+                  NEXT
+                </ToggleButton>
+              </ToggleButtonGroup>
             </Box>
           </Box>
-        </React.Fragment>
-      ) : (
-        <React.Fragment></React.Fragment>
-      )}
+        </Box>
+      </React.Fragment>
     </React.Fragment>
   );
 }
