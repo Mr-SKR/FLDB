@@ -9,6 +9,7 @@ import {
   CardContent,
   Card,
 } from "@mui/material";
+import Image from "next/image";
 
 interface FoodCardProps {
   videoId: string;
@@ -19,6 +20,7 @@ interface FoodCardProps {
   displacement: number;
   hasVeg: boolean;
   useLocation: boolean;
+  index: number;
   setUseLocation: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
@@ -30,12 +32,23 @@ export default function FoodCard(props: FoodCardProps): JSX.Element {
         sx={{ textAlign: "center", marginBottom: "0.5rem" }}
       >
         <CardActionArea href={`/fldb/${props.videoId}`}>
-          <CardMedia
-            component="img"
-            height={props.height}
-            image={props.thumbnail}
-            alt={props.title ? props.title : "No image found"}
-          />
+          <CardMedia>
+            <div
+              style={{
+                position: "relative",
+                width: "100%",
+                height: props.height,
+              }}
+            >
+              <Image
+                src={props.thumbnail}
+                alt={props.title ? props.title : "No image found"}
+                layout="fill"
+                objectFit="cover"
+                priority={props.index < 3 ? true : false}
+              />
+            </div>
+          </CardMedia>
           <CardContent>
             <Typography gutterBottom variant="h6" component="div">
               {props.title ? props.title : "No title"}

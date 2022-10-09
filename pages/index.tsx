@@ -285,7 +285,7 @@ function Home(props: HomeProps): JSX.Element {
             <Accordion expanded sx={{ mb: "1rem" }}>
               <AccordionSummary
                 expandIcon={<TuneIcon />}
-                aria-controls="filters"
+                aria-controls="filter-controls"
                 id="filters"
               >
                 <Typography
@@ -406,7 +406,7 @@ function Home(props: HomeProps): JSX.Element {
             </Accordion>
             {currentVideos.length ? (
               currentPageVideos.reduce(
-                (oldRecord: JSX.Element[], newRecord) => {
+                (oldRecord: JSX.Element[], newRecord, currentIndex) => {
                   if (newRecord.name) {
                     oldRecord.push(
                       <FoodCard
@@ -424,6 +424,7 @@ function Home(props: HomeProps): JSX.Element {
                         }
                         useLocation={useLocation}
                         setUseLocation={setUseLocation}
+                        index={currentIndex}
                       />
                     );
                   }
