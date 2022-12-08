@@ -45,6 +45,12 @@ function FLDB(props: FLDBProps): JSX.Element {
   const theme = useTheme();
   const isLargeScreen = useMediaQuery(theme.breakpoints.up("lg"));
 
+  // If the page is not yet generated, this will be displayed
+  // initially until getStaticProps() finishes running
+  if (router.isFallback) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <React.Fragment>
       <Head>
