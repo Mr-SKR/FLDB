@@ -404,37 +404,42 @@ function Home(props: HomeProps): JSX.Element {
                 </Box>
               </AccordionDetails>
             </Accordion>
-            {currentVideos.length ? (
-              currentPageVideos.reduce(
-                (oldRecord: JSX.Element[], newRecord, currentIndex) => {
-                  if (newRecord.name) {
-                    oldRecord.push(
-                      <FoodCard
-                        key={newRecord._id}
-                        videoId={newRecord.videoId}
-                        title={newRecord.name}
-                        description={newRecord.videoTitle}
-                        displacement={newRecord.displacement}
-                        hasVeg={newRecord.hasVeg}
-                        height={isLargeScreen ? 480 : 180}
-                        thumbnail={
-                          isLargeScreen
-                            ? newRecord?.thumbnail?.large
-                            : newRecord?.thumbnail?.small
-                        }
-                        useLocation={useLocation}
-                        setUseLocation={setUseLocation}
-                        index={currentIndex}
-                      />
-                    );
-                  }
-                  return oldRecord;
-                },
-                []
-              )
-            ) : (
-              <React.Fragment></React.Fragment>
-            )}
+            <Grid container spacing={2}>
+              {currentVideos.length ? (
+                currentPageVideos.reduce(
+                  (oldRecord: JSX.Element[], newRecord, currentIndex) => {
+                    if (newRecord.name) {
+                      oldRecord.push(
+                        <Grid item lg={6}>
+                          <FoodCard
+                            key={newRecord._id}
+                            videoId={newRecord.videoId}
+                            title={newRecord.name}
+                            description={newRecord.videoTitle}
+                            displacement={newRecord.displacement}
+                            hasVeg={newRecord.hasVeg}
+                            height={isLargeScreen ? 480 : 180}
+                            thumbnail={
+                              isLargeScreen
+                                ? newRecord?.thumbnail?.large
+                                : newRecord?.thumbnail?.small
+                            }
+                            useLocation={useLocation}
+                            setUseLocation={setUseLocation}
+                            index={currentIndex}
+                          />
+                        </Grid>
+                      );
+                    }
+                    return oldRecord;
+                  },
+                  []
+                )
+              ) : (
+                <React.Fragment></React.Fragment>
+              )}
+            </Grid>
+
             <Box
               sx={{
                 display: "flex",

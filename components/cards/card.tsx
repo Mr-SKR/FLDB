@@ -53,7 +53,7 @@ export default function FoodCard(props: FoodCardProps): JSX.Element {
             <Typography gutterBottom variant="h6" component="div">
               {props.title ? props.title : "No title"}
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="text.secondary" noWrap>
               {props.description ? props.description : "No description"}
             </Typography>
           </CardContent>
