@@ -410,7 +410,7 @@ function Home(props: HomeProps): JSX.Element {
                   (oldRecord: JSX.Element[], newRecord, currentIndex) => {
                     if (newRecord.name) {
                       oldRecord.push(
-                        <Grid item lg={6}>
+                        <Grid item xs={12} lg={6}>
                           <FoodCard
                             key={newRecord._id}
                             videoId={newRecord.videoId}
