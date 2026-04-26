@@ -8,6 +8,8 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Box,
+  Divider,
 } from "@mui/material";
 import MuiAlert, { AlertProps } from "@mui/material/Alert";
 import TuneIcon from "@mui/icons-material/Tune";
@@ -69,7 +71,7 @@ const Home: React.FC<HomeProps> = ({ data }) => {
   }, [searchValue, hasVeg, userLocation, resetPagination]);
 
   return (
-    <React.Fragment>
+    <Box sx={{ bgcolor: "background.default", minHeight: "100vh" }}>
       <Head>
         <title>Food Lovers Database (FLDb)</title>
         <meta name="viewport" content="initial-scale=1.0, width=device-width" />
@@ -87,14 +89,30 @@ const Home: React.FC<HomeProps> = ({ data }) => {
         </Alert>
       </Snackbar>
 
-      <Container maxWidth="md" sx={{ mt: 2, mb: 4 }}>
-        <Accordion defaultExpanded sx={{ mb: 3 }}>
-          <AccordionSummary expandIcon={<TuneIcon />}>
-            <Typography align="center" variant="h6" sx={{ width: "100%", fontWeight: "bold" }}>
-              Food Lovers Database (FLDb)
+      <Container maxWidth="md" sx={{ mt: { xs: 2, sm: 4 }, mb: 4 }}>
+        <Accordion 
+          defaultExpanded 
+          elevation={0} 
+          sx={{ 
+            mb: 4, 
+            borderRadius: "16px !important", 
+            border: "1px solid", 
+            borderColor: "divider",
+            overflow: "hidden",
+            bgcolor: "background.paper",
+            "&:before": { display: "none" }
+          }}
+        >
+          <AccordionSummary 
+            expandIcon={<TuneIcon color="primary" />}
+            sx={{ bgcolor: "background.paper" }}
+          >
+            <Typography variant="h6" sx={{ fontWeight: "bold", color: "text.primary" }}>
+              Explore Restaurants
             </Typography>
           </AccordionSummary>
-          <AccordionDetails>
+          <Divider />
+          <AccordionDetails sx={{ bgcolor: "background.paper", p: { xs: 2, sm: 3 } }}>
             <FilterSection
               searchValue={searchValue}
               setSearchValue={setSearchValue}
@@ -107,35 +125,50 @@ const Home: React.FC<HomeProps> = ({ data }) => {
           </AccordionDetails>
         </Accordion>
 
-        <Grid container spacing={2}>
-          {currentPageItems.map((video, index) => (
-            <Grid item xs={12} lg={6} key={video._id}>
-              <FoodCard
-                videoId={video.videoId}
-                title={video.name || "No title"}
-                description={video.videoTitle}
-                displacement={video.displacement || 0}
-                hasVeg={video.hasVeg || false}
-                height={isLargeScreen ? 480 : 180}
-                thumbnail={isLargeScreen ? video.thumbnail?.large || "" : video.thumbnail?.small || ""}
-                useLocation={!!userLocation}
-                setUseLocation={refreshLocation}
-                index={index}
-              />
-            </Grid>
-          ))}
-        </Grid>
+        {currentPageItems.length > 0 ? (
+          <Grid container spacing={3} alignItems="stretch">
+            {currentPageItems.map((video, index) => (
+              <Grid item xs={12} sm={6} key={video._id}>
+                <FoodCard
+                  videoId={video.videoId}
+                  title={video.name || "No title"}
+                  description={video.videoTitle}
+                  displacement={video.displacement || 0}
+                  hasVeg={video.hasVeg || false}
+                  height={isLargeScreen ? 300 : 200}
+                  thumbnail={isLargeScreen ? video.thumbnail?.large || "" : video.thumbnail?.small || ""}
+                  useLocation={!!userLocation}
+                  setUseLocation={refreshLocation}
+                  index={index}
+                />
+              </Grid>
+            ))}
+          </Grid>
+        ) : (
+          <Box sx={{ textAlign: "center", py: 10 }}>
+            <Typography variant="h6" color="text.secondary" gutterBottom>
+              No restaurants found matching your criteria
+            </Typography>
+            <Typography variant="body2" color="text.disabled">
+              Try adjusting your search or filters
+            </Typography>
+          </Box>
+        )}
 
-        <PaginationSection
-          currentPage={currentPage}
-          totalPages={totalPages}
-          hasNextPage={hasNextPage}
-          hasPrevPage={hasPrevPage}
-          onNext={nextPage}
-          onPrev={prevPage}
-        />
+        {totalPages > 1 && (
+          <Box sx={{ mt: 6 }}>
+            <PaginationSection
+              currentPage={currentPage}
+              totalPages={totalPages}
+              hasNextPage={hasNextPage}
+              hasPrevPage={hasPrevPage}
+              onNext={nextPage}
+              onPrev={prevPage}
+            />
+          </Box>
+        )}
       </Container>
-    </React.Fragment>
+    </Box>
   );
 };
 

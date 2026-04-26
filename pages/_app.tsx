@@ -1,14 +1,46 @@
-import React from "react";
-import { ThemeProvider } from "@mui/system";
+import React, { createContext, useMemo, useState, useEffect } from "react";
+import { ThemeProvider, createTheme } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import type { AppProps } from "next/app";
 import HEAD from "next/head";
+import { PaletteMode } from "@mui/material";
 
-import customTheme from "../components/ui/Theme";
+import { getDesignTokens } from "../components/ui/Theme";
+
+export const ColorModeContext = createContext({ toggleColorMode: () => {
+  // Default implementation
+} });
 
 function MyApp({ Component, pageProps }: AppProps) {
+  const [mode, setMode] = useState<PaletteMode>("light");
+
+  // Persist theme choice in localStorage
+  useEffect(() => {
+    const savedMode = localStorage.getItem("colorMode") as PaletteMode;
+    if (savedMode) {
+      setMode(savedMode);
+    } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+      setMode("dark");
+    }
+  }, []);
+
+  const colorMode = useMemo(
+    () => ({
+      toggleColorMode: () => {
+        setMode((prevMode) => {
+          const newMode = prevMode === "light" ? "dark" : "light";
+          localStorage.setItem("colorMode", newMode);
+          return newMode;
+        });
+      },
+    }),
+    []
+  );
+
+  const theme = useMemo(() => createTheme(getDesignTokens(mode)), [mode]);
+
   return (
-    <React.Fragment>
+    <ColorModeContext.Provider value={colorMode}>
       <HEAD>
         <title>FLDB: Food Lovers Database</title>
         <meta charSet="utf-8" />
@@ -18,28 +50,14 @@ function MyApp({ Component, pageProps }: AppProps) {
           key="description"
         />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="theme-color" content="#000000" />
         <meta name="viewport" content="initial-scale=1.0, width=device-width" />
-        {/* <link rel="manifest" href="%PUBLIC_URL%/manifest.json" /> */}
       </HEAD>
-      <CssBaseline />
-      <ThemeProvider theme={customTheme}>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
         <Component {...pageProps} />
       </ThemeProvider>
-    </React.Fragment>
+    </ColorModeContext.Provider>
   );
 }
-
-// Only uncomment this method if you have blocking data requirements for
-// every single page in your application. This disables the ability to
-// perform automatic static optimization, causing every page in your app to
-// be server-side rendered.
-//
-// MyApp.getInitialProps = async (appContext) => {
-//   // calls page's `getInitialProps` and fills `appProps.pageProps`
-//   const appProps = await App.getInitialProps(appContext);
-//
-//   return { ...appProps }
-// }
 
 export default MyApp;

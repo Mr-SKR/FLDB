@@ -1,16 +1,78 @@
-import { createTheme } from "@mui/material/styles";
-import { green, purple } from "@mui/material/colors";
+import { PaletteMode } from "@mui/material";
+import { createTheme, ThemeOptions } from "@mui/material/styles";
 
-const customTheme = createTheme({
+export const getDesignTokens = (mode: PaletteMode): ThemeOptions => ({
   palette: {
-    primary: {
-      main: purple[500],
+    mode,
+    ...(mode === "light"
+      ? {
+          // palette values for light mode
+          primary: {
+            main: "#0984e3", // Vibrant Blue
+          },
+          secondary: {
+            main: "#00b894", // Mint green
+          },
+          background: {
+            default: "#f9f9fb",
+            paper: "#ffffff",
+          },
+          text: {
+            primary: "#2d3436",
+            secondary: "#636e72",
+          },
+          divider: "rgba(0, 0, 0, 0.08)",
+        }
+      : {
+          // palette values for dark mode
+          primary: {
+            main: "#74b9ff", // Lighter Blue
+          },
+          secondary: {
+            main: "#55efc4", // Soft mint
+          },
+          background: {
+            default: "#121212",
+            paper: "#1e1e1e",
+          },
+          text: {
+            primary: "#ffffff",
+            secondary: "#b2bec3",
+          },
+          divider: "rgba(255, 255, 255, 0.08)",
+        }),
+  },
+  typography: {
+    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+    h6: {
+      fontWeight: 700,
     },
-    secondary: {
-      main: green[500],
+    h5: {
+      fontWeight: 700,
+    },
+    h4: {
+      fontWeight: 700,
     },
   },
+  shape: {
+    borderRadius: 12,
+  },
   components: {
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          textTransform: "none",
+          fontWeight: 600,
+        },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundImage: "none",
+        },
+      },
+    },
     MuiTypography: {
       defaultProps: {
         variantMapping: {
@@ -28,10 +90,8 @@ const customTheme = createTheme({
       },
     },
   },
-  // custom: {
-  //   drawerWidth: 240,
-  //   appbarHeight: { small: 56, large: 64 },
-  // },
 });
+
+const customTheme = createTheme(getDesignTokens("light"));
 
 export default customTheme;

@@ -32,7 +32,7 @@ export const fetchLocationDetails = async (description: string) => {
       let tracerResult = "",
         matches;
 
-      if (syncConfig.replaceLinks.hasOwnProperty(url)) {
+      if (Object.prototype.hasOwnProperty.call(syncConfig.replaceLinks, url)) {
         url = (syncConfig.replaceLinks as any)[url];
       }
 

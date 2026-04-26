@@ -1,5 +1,7 @@
 import React from "react";
-import { Box, ToggleButton, ToggleButtonGroup } from "@mui/material";
+import { Box, Button, Typography, Paper } from "@mui/material";
+import NavigateBeforeIcon from "@mui/icons-material/NavigateBefore";
+import NavigateNextIcon from "@mui/icons-material/NavigateNext";
 
 interface PaginationSectionProps {
   currentPage: number;
@@ -19,18 +21,43 @@ export const PaginationSection: React.FC<PaginationSectionProps> = ({
   onPrev,
 }) => {
   return (
-    <Box sx={{ display: "flex", justifyContent: "center", my: 2 }}>
-      <ToggleButtonGroup exclusive>
-        <ToggleButton value="prev" disabled={!hasPrevPage} onClick={onPrev}>
-          PREV
-        </ToggleButton>
-        <ToggleButton value="page" disabled sx={{ textTransform: "none" }}>
-          {currentPage + 1} / {totalPages}
-        </ToggleButton>
-        <ToggleButton value="next" disabled={!hasNextPage} onClick={onNext}>
-          NEXT
-        </ToggleButton>
-      </ToggleButtonGroup>
+    <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 2, my: 4 }}>
+      <Button
+        variant="outlined"
+        startIcon={<NavigateBeforeIcon />}
+        disabled={!hasPrevPage}
+        onClick={onPrev}
+        sx={{ borderRadius: "20px", textTransform: "none" }}
+      >
+        Previous
+      </Button>
+      
+      <Paper 
+        elevation={0} 
+        sx={{ 
+          px: 2, 
+          py: 0.5, 
+          borderRadius: "15px", 
+          border: "1px solid", 
+          borderColor: "divider",
+          bgcolor: "background.paper",
+          color: "text.primary"
+        }}
+      >
+        <Typography variant="body2" sx={{ fontWeight: "bold" }}>
+          {currentPage + 1} <Typography component="span" variant="caption" sx={{ color: "text.secondary" }}>of</Typography> {totalPages}
+        </Typography>
+      </Paper>
+
+      <Button
+        variant="outlined"
+        endIcon={<NavigateNextIcon />}
+        disabled={!hasNextPage}
+        onClick={onNext}
+        sx={{ borderRadius: "20px", textTransform: "none" }}
+      >
+        Next
+      </Button>
     </Box>
   );
 };
