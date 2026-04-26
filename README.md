@@ -23,8 +23,6 @@ This repo contains code related to frontend that serves that uses APIs from back
 - [TypeScript](https://www.typescriptlang.org/): Programming language
 - [NextJS](https://nextjs.org/): Production ready react framework for SSR, SSG et.,
 - [MUI](https://mui.com/): Design library
-- [Netlify](https://www.netlify.com/): Hosting and Deployment platform
-- [React Redux](https://react-redux.js.org/): Global state management (Probably overkill for this project). Update: Removed redux from this project
 
 ## Project Setup
 
@@ -45,26 +43,21 @@ Create a `.env` file at the root of the project folder and populate appropriate 
 ```
 MONGODB_URI=<YOUR_MONGODB_URI>
 NEXT_PUBLIC_DISQUS_SHORTNAME=<YOUR_DISQUS_SHORTNAME>
+
+# For Database Sync
+YOUTUBE_API_KEY=<YOUR_YOUTUBE_API_KEY>
+GOOGLE_MAPS_API_KEY=<YOUR_GOOGLE_MAPS_API_KEY>
+SYNC_SECRET=<YOUR_CUSTOM_SECRET_STRING>
 ```
 
-For Localhost only:
+### Database Syncing
 
-```
-HTTPS=true
-SSL_CRT_FILE=cert.pem
-SSL_KEY_FILE=key.pem
-```
+The application now includes an integrated database sync logic. To trigger a refresh of the database with new videos and restaurant details, make a POST request to `/api/sync` with your `SYNC_SECRET`.
 
-### Create a cert for hosting react on https on localhost (optional)
+**Example:**
+`curl -X POST "https://your-domain.com/api/sync?secret=YOUR_CUSTOM_SECRET_STRING"`
 
-[Guide](https://flaviocopes.com/react-how-to-configure-https-localhost/)
-
-```
-openssl req -x509 -newkey rsa:2048 -keyout keytmp.pem -out cert.pem
-openssl rsa -in keytmp.pem -out key.pem
-```
-
-Place the generated cert.pem and key.pem in user root of project directory
+You can automate this using [Vercel Cron Jobs](https://vercel.com/docs/cron-jobs).
 
 ### Run locally
 
@@ -81,5 +74,3 @@ yarn start
 ### Setup monitoring using New Relic (optional)
 
 This project uses [New Relic](https://docs.newrelic.com/docs/browser/browser-monitoring/getting-started/introduction-browser-monitoring/) to setup browser monitoring of the users. You can setup the same if you wish
-
-### Use Netlify to host and auto deploy (optional)
