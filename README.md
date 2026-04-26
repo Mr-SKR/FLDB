@@ -1,75 +1,103 @@
+# Food Lovers Database (FLDb)
 
-# Food loveers Database (FLDb)
+[![Website](https://img.shields.io/badge/Website-foodloversdatabase.com-blue)](https://foodloversdatabase.com)
 
-Webiste: [FLDb](https://fl-db.in)
+A comprehensive collection and search engine for food vlogs from the [Food Lovers TV](https://www.youtube.com/channel/UC-Lq6oBPTgTXT_K-ylWL6hg) YouTube channel.
 
-## About
+## 🍽️ About the Project
 
-Food Lovers Database(FLDb) is a collection of food Vlogs from [Food Lovers TV](https://www.youtube.com/channel/UC-Lq6oBPTgTXT_K-ylWL6hg)
+Food Lovers Database (FLDb) is a fan-made project designed to help food enthusiasts discover restaurants reviewed by Food Lovers TV. It bridges the gap between entertaining video content and actionable dining discovery by extracting location data directly from video descriptions and enriching it with Google Maps details.
 
-This repo contains code related to frontend that serves that uses APIs from backend [FLDB backend](https://github.com/Mr-SKR/fldb-apis). More info: https://fl-db.in/about
+This repository contains the integrated frontend and synchronization logic.
 
-## Features
+## ✨ Key Features
 
-- Find restaurants based on your location
-- Find restaurants based on search results
-- Find restaurant information such as video review, google ratings, contact number, location name, maps link, operating hours and description
-- Comment and discuss on restaurant/video review of each restaurant
+- 📍 **Location-Based Discovery:** Find restaurants near your current location.
+- 🔍 **Powerful Search:** Search by restaurant name, or video title.
+- 🌓 **Dark & Light Mode:** Fully responsive UI with persistent theme support.
+- 🥗 **Dietary Filters:** Quickly filter for "Veg Friendly" restaurants.
+- 🔄 **Automated Data Sync:** Integrated background synchronization with YouTube and Google Places APIs.
+- 💬 **Discussion Integration:** Comment and discuss reviews via Disqus.
 
-## Tech Stack (Front-end only)
+## 🛠️ Tech Stack
 
-- [React](https://reactjs.org/): Front-end library
-- [TypeScript](https://www.typescriptlang.org/): Programming language
-- [NextJS](https://nextjs.org/): Production ready react framework for SSR, SSG et.,
-- [MUI](https://mui.com/): Design library
+- **Framework:** [Next.js](https://nextjs.org/) (React)
+- **Language:** [TypeScript](https://www.typescriptlang.org/)
+- **UI Library:** [MUI (Material UI)](https://mui.com/)
+- **Database:** [MongoDB](https://www.mongodb.com/) (Mongoose)
+- **APIs:** YouTube Data API v3, Google Places API
 
-## Project Setup
+## 🚀 Getting Started
 
-### Install project dependencies
+### 1. Prerequisites
 
-Install [Node.js](https://nodejs.org/en/) if you haven't already.
-From the root of the project folder, execute below command(s)
+- [Node.js](https://nodejs.org/en/) (v18+ recommended)
+- [Yarn](https://yarnpkg.com/)
+- A [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) cluster or local instance.
 
-```
-npm install -g yarn
-yarn
-```
+### 2. Installation
 
-### Set environment variables
-
-Create a `.env` file at the root of the project folder and populate appropriate values for below keys.
-
-```
-MONGODB_URI=<YOUR_MONGODB_URI>
-NEXT_PUBLIC_DISQUS_SHORTNAME=<YOUR_DISQUS_SHORTNAME>
-
-# For Database Sync
-YOUTUBE_API_KEY=<YOUR_YOUTUBE_API_KEY>
-GOOGLE_MAPS_API_KEY=<YOUR_GOOGLE_MAPS_API_KEY>
-SYNC_SECRET=<YOUR_CUSTOM_SECRET_STRING>
+```bash
+git clone https://github.com/Mr-SKR/FLDB.git
+cd FLDB
+yarn install
 ```
 
-### Database Syncing
+### 3. Google API Setup
 
-The application now includes an integrated database sync logic. To trigger a refresh of the database with new videos and restaurant details, make a POST request to `/api/sync` with your `SYNC_SECRET`.
+You need a [Google Cloud Project](https://console.cloud.google.com/) with the following APIs enabled:
+- YouTube Data API v3
+- Maps JavaScript API
+- Places API (requires billing enabled)
 
-**Example:**
-`curl -X POST "https://your-domain.com/api/sync?secret=YOUR_CUSTOM_SECRET_STRING"`
+### 4. Environment Variables
 
-You can automate this using [Vercel Cron Jobs](https://vercel.com/docs/cron-jobs).
+Create a `.env` file in the root directory:
 
-### Run locally
+```env
+MONGODB_URI=your_mongodb_connection_string
+NEXT_PUBLIC_DISQUS_SHORTNAME=your_disqus_shortname
 
-From the root of the project folder, execute below command(s)
-
+# Database Sync Configuration
+YOUTUBE_API_KEY=your_youtube_api_key
+GOOGLE_MAPS_API_KEY=your_google_maps_api_key
+SYNC_SECRET=your_custom_secure_string_for_api_trigger
 ```
-yarn start
+
+## 🔄 Database Syncing
+
+The database is populated by syncing with specific YouTube playlists.
+
+**Trigger manually:**
+```bash
+curl -X POST "http://localhost:3000/api/sync?secret=YOUR_CUSTOM_SECRET"
 ```
 
-### Debugging on remote mobile firefox:
+**Automate:** Use [Vercel Cron Jobs](https://vercel.com/docs/cron-jobs) or GitHub Actions to trigger the sync endpoint periodically.
 
-- [Firefox debug over network](https://developer.mozilla.org/en-US/docs/Tools/about:debugging#connecting_over_the_network)
+## 💻 Development
 
-### Setup monitoring using New Relic (optional)
+Run the development server:
+```bash
+yarn dev
+```
 
-This project uses [New Relic](https://docs.newrelic.com/docs/browser/browser-monitoring/getting-started/introduction-browser-monitoring/) to setup browser monitoring of the users. You can setup the same if you wish
+Run linting:
+```bash
+yarn lint
+```
+
+## 📦 Project Structure
+
+- `/components`: Reusable UI components (Cards, Filters, Headers).
+- `/pages/api`: API routes, including the `/sync` logic.
+- `/services`: Business logic for video and data management.
+- `/lib`: Helper libraries for DB connection and location extraction.
+- `/models`: Mongoose schemas for MongoDB.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+*Created with ❤️ for the Food Lovers community.*
