@@ -9,6 +9,7 @@ import {
   Typography,
   InputAdornment,
   Paper,
+  Button,
 } from "@mui/material";
 import RotateLeftIcon from "@mui/icons-material/RotateLeft";
 import SearchIcon from "@mui/icons-material/Search";
@@ -138,13 +139,29 @@ export const FilterSection: React.FC<FilterSectionProps> = ({
 
         {userLocation && (
           <Grid item xs={12}>
-            <Box display="flex" justifyContent="center" alignItems="center" gap={1}>
-              <Typography variant="caption" color="text.secondary">
-                Updated: {new Date(userLocation.lastUpdated).toLocaleTimeString()}
-              </Typography>
-              <IconButton onClick={refreshLocation} size="small" color="primary" sx={{ p: 0.5 }}>
-                <RotateLeftIcon fontSize="small" />
-              </IconButton>
+            <Box display="flex" justifyContent="center">
+              <Button
+                variant="text"
+                size="small"
+                onClick={refreshLocation}
+                startIcon={<RotateLeftIcon fontSize="small" />}
+                sx={{
+                  color: "text.secondary",
+                  textTransform: "none",
+                  borderRadius: "20px",
+                  px: 2,
+                  py: 0.5,
+                  bgcolor: "action.hover",
+                  "&:hover": {
+                    bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
+                    color: "primary.main",
+                  },
+                }}
+              >
+                <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                  Updated: {new Date(userLocation.lastUpdated).toLocaleTimeString()} • Refresh
+                </Typography>
+              </Button>
             </Box>
           </Grid>
         )}

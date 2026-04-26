@@ -1,4 +1,3 @@
-[![Build Status](https://api.netlify.com/api/v1/badges/70ee4bbe-c76d-455f-a5c6-c26023d739cd/deploy-status)](https://app.netlify.com/sites/fl-db/deploys)
 
 # Food loveers Database (FLDb)
 
