@@ -71,26 +71,26 @@ const faqs = [
     qid: 11,
     title: "What is the tech stack used to build this application?",
     description:
-      "MERN. I am pretty new to this stack and would appreciate any valuable feedback from the experts. Please raise the issues @ https://github.com/Mr-SKR/FLDB/issues or https://github.com/Mr-SKR/fldb-apis/issues",
+      "Next.js, MongoDB, and MUI. The application is a self-contained Next.js project where both the frontend and backend logic (API routes/Server-side fetching) are co-located. Please raise issues @ https://github.com/Mr-SKR/FLDB/issues",
   },
   {
     qid: 12,
     title: "How can I trust this website?",
     description:
-      "Code used for building this whole website is presented publicly @ https://github.com/Mr-SKR/FLDB and https://github.com/Mr-SKR/fldb-apis. Feel free to inspect if you've got any free time. These repos are also licenced under https://opensource.org/licenses/MIT. So feel free to re-use anything from here to build a similar site for your favourite YouTube food reviewer",
+      "The source code for this entire application is publicly available @ https://github.com/Mr-SKR/FLDB. Feel free to inspect it. The code is licensed under MIT, so you are free to re-use it to build similar sites.",
   },
   {
     qid: 13,
     title: "Nearby page is displaying inaccurate distance",
     description:
-      "Nearby page doesn't display distance. Instead, it displays displacement.  Displacement is the shortest distance from the initial to the final position (Imagine a straight line). It is calculated using the Haversine's formula(https://en.wikipedia.org/wiki/Haversine_formula) and these results aren't 100% accurate since this formula applies to spherical objects and earth is not a perfect sphere. That being said, the resultant displacement is almost acceptable in most cases",
+      "The displacement shown is the shortest distance from your initial position to the restaurant (Imagine a straight line). It is calculated using the Haversine formula, which is accurate for most use cases but may vary slightly due to the earth's curvature.",
   },
   {
     qid: 14,
     title:
-      "How does FLDb display information such as restaurant's ratings, contact number etc.,?",
+      "How does FLDb display information such as restaurant's ratings, contact number etc.?",
     description:
-      "FLDb backend scraps the Food Lovers TV YouTube channel periodically to gather video information and google maps location link from video description using the YouTube data API. These google links are used to fetch information such as Google reviews/ratings, contact info, restaurant's operating hours etc., by querying the Google maps places API",
+      "FLDb periodically gathers video information and Google Maps links from the YouTube channel using the YouTube Data API. These links are then used to fetch details like ratings, contact info, and operating hours via the Google Places API. This data is stored and served directly from our integrated backend.",
   },
   {
     qid: 15,

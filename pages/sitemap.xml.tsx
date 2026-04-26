@@ -1,6 +1,6 @@
 import type { NextApiResponse } from "next";
 
-import { getAllVideoIds } from "../utils/video";
+import { getAllVideoIds } from "../services/videoService";
 
 const Sitemap = () => {
   return null;
