@@ -15,105 +15,136 @@ const isValidUrl = (url: string) => {
 };
 
 export const fetchLocationDetails = async (description: string) => {
-  let locationDetails: any = {};
-  let locationURLParams: any = {};
-  let hasValidLocationParams = false;
+  const allLocationDetails: any[] = [];
   
   const googleMapsKey = process.env.GOOGLE_MAPS_API_KEY;
   if (!googleMapsKey) {
     console.error("GOOGLE_MAPS_API_KEY is not defined");
-    return {};
+    return [];
   }
 
   const urls = Array.from(getUrls(String(description)));
+  const fields: any[] = [
+    "business_status",
+    "formatted_address",
+    "name",
+    "geometry",
+    "international_phone_number",
+    "place_id",
+    "rating",
+    "url",
+    "opening_hours",
+  ];
   
   for (let url of urls) {
     if (isValidUrl(url)) {
-      let tracerResult = "",
-        matches;
+      // 1. Extract target URL from YouTube redirects
+      if (url.includes("youtube.com/redirect")) {
+        try {
+          const parsedUrl = new URL(url);
+          const q = parsedUrl.searchParams.get("q");
+          if (q && isValidUrl(q)) {
+            console.log(`[Sync] Extracting target from YouTube redirect: ${q}`);
+            url = q;
+          }
+        } catch (e) {
+          console.warn(`[Sync] Failed to parse YouTube redirect URL: ${url}`);
+        }
+      }
 
       if (Object.prototype.hasOwnProperty.call(syncConfig.replaceLinks, url)) {
         url = (syncConfig.replaceLinks as any)[url];
       }
 
-      if (url.includes("maps")) {
+      // Check for various Google Maps link patterns
+      if (/(maps|g\.page|g\.co|goo\.gl)/.test(url)) {
         try {
-          tracerResult = await tracer(url);
-          matches = Array.from(tracerResult.matchAll(new RegExp("0[xX][0-9a-fA-F]+", "g")));
-          const hexLattitude = matches[0]?.[0];
-          const hexLongitude = matches[1]?.[0];
+          console.log(`[Sync] Tracing URL: ${url}`);
+          let tracerResult = await tracer(url);
+          console.log(`[Sync] Resolved to: ${tracerResult}`);
           
-          if (hexLattitude && hexLongitude) {
-            locationURLParams = {
-              ftid: `${hexLattitude}:${hexLongitude}`,
-              fields: [
-                "business_status",
-                "formatted_address",
-                "name",
-                "geometry",
-                "international_phone_number",
-                "place_id",
-                "rating",
-                "url",
-                "opening_hours",
-              ],
-              key: googleMapsKey,
-            };
-            hasValidLocationParams = true;
-            break;
+          let locationURLParams: any = null;
+
+          // 1. Try to extract FTID (0x...:0x...)
+          // Prefer FTID that follows !1s marker (primary feature ID)
+          const preferredFtidMatch = tracerResult.match(/!1s(0x[0-9a-f]+:0x[0-9a-f]+)/i);
+          const anyFtidMatch = tracerResult.match(/0x[0-9a-f]+:0x[0-9a-f]+/i);
+          
+          if (preferredFtidMatch) {
+            locationURLParams = { ftid: preferredFtidMatch[1] };
+          } else if (anyFtidMatch) {
+            locationURLParams = { ftid: anyFtidMatch[0] };
           }
-        } catch (e) {
-          console.error(`Error tracing redirect for ${url}:`, e);
-        }
-      } else if (url.includes("g.page")) {
-        try {
-          tracerResult = await tracer(url);
-          if (tracerResult.includes("ludocid")) {
-            const ludocidMatch = tracerResult.match(/ludocid=([0-9]+)/);
-            if (ludocidMatch && ludocidMatch[1]) {
-              const cid = ludocidMatch[1];
-              locationURLParams = {
-                cid: cid,
-                fields: [
-                  "business_status",
-                  "formatted_address",
-                  "name",
-                  "geometry",
-                  "international_phone_number",
-                  "place_id",
-                  "rating",
-                  "url",
-                  "opening_hours",
-                ],
-                key: googleMapsKey,
-              };
-              hasValidLocationParams = true;
-              break;
+          // 2. Try to extract CID (ludocid or cid)
+          else {
+            const cidMatch = tracerResult.match(/(?:ludocid|cid)=([0-9]+)/);
+            if (cidMatch) {
+              locationURLParams = { cid: cidMatch[1] };
             }
           }
+
+          let resolvedPlace: any = null;
+
+          if (locationURLParams) {
+            console.log(`[Sync] Calling Place Details with params:`, locationURLParams);
+            const response = await googleMapsClient.placeDetails({
+              params: {
+                ...locationURLParams,
+                fields,
+                key: googleMapsKey,
+              },
+            });
+            
+            const result = response.data.result;
+            if (result && result.name && result.name !== "0") {
+              resolvedPlace = result;
+            } else {
+              console.warn(`[Sync] Place Details returned invalid result (name: ${result?.name}). Trying fallback.`);
+            }
+          } 
+          
+          // 3. Fallback: Search by name if FTID/CID failed or returned invalid data
+          if (!resolvedPlace && tracerResult.includes("/maps/place/")) {
+            const nameMatch = tracerResult.match(/\/maps\/place\/([^/]+)/);
+            if (nameMatch) {
+              const decodedName = decodeURIComponent(nameMatch[1].replace(/\+/g, " "));
+              console.log(`[Sync] Falling back to search by name: ${decodedName}`);
+              const findResponse = await googleMapsClient.findPlaceFromText({
+                params: {
+                  input: decodedName,
+                  inputtype: "textquery" as any,
+                  fields: ["place_id"],
+                  key: googleMapsKey,
+                }
+              });
+              
+              const placeId = findResponse.data.candidates?.[0]?.place_id;
+              if (placeId) {
+                const detailResponse = await googleMapsClient.placeDetails({
+                  params: {
+                    place_id: placeId,
+                    fields,
+                    key: googleMapsKey,
+                  }
+                });
+                if (detailResponse.data.result) {
+                  resolvedPlace = detailResponse.data.result;
+                }
+              }
+            }
+          }
+
+          if (resolvedPlace) {
+            allLocationDetails.push(resolvedPlace);
+          } else {
+            console.warn(`[Sync] Could not resolve location from URL: ${tracerResult}`);
+          }
         } catch (e) {
-          console.error(`Error tracing redirect for ${url}:`, e);
+          console.error(`Error processing Google Maps URL ${url}:`, e);
         }
       }
     }
   }
 
-  if (hasValidLocationParams) {
-    try {
-      const response = await googleMapsClient.placeDetails({
-        params: {
-          ...locationURLParams,
-        },
-      });
-      locationDetails = response.data.result;
-    } catch (err: any) {
-      if (err.response?.data?.error_message) {
-        console.error("Google Maps API Error:", err.response.data.status, "-", err.response.data.error_message);
-      } else {
-        console.error("Error fetching place details from Google Maps API:", err.message);
-      }
-    }
-  }
-
-  return locationDetails;
+  return allLocationDetails;
 };

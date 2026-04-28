@@ -10,6 +10,7 @@ import {
   AccordionDetails,
   Box,
   Divider,
+  LinearProgress,
 } from "@mui/material";
 import MuiAlert, { AlertProps } from "@mui/material/Alert";
 import TuneIcon from "@mui/icons-material/Tune";
@@ -17,12 +18,12 @@ import Head from "next/head";
 
 import { useGeolocation } from "../hooks/useGeolocation";
 import { usePagination } from "../hooks/usePagination";
-import { useVideoFilters } from "../hooks/useVideoFilters";
-import { getAllVideos } from "../services/videoService";
+import { usePlaceFilters } from "../hooks/usePlaceFilters";
+import { getAllPlaces } from "../services/videoService";
 import FoodCard from "../components/cards/card";
 import { FilterSection } from "../components/ui/FilterSection";
 import { PaginationSection } from "../components/ui/PaginationSection";
-import { VideoInterface } from "../types/types";
+import { PlaceInterface } from "../types/types";
 import { PAGE_SIZE } from "../config/constants";
 import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
@@ -32,7 +33,7 @@ const Alert = forwardRef<HTMLDivElement, AlertProps>(function Alert(props, ref) 
 });
 
 interface HomeProps {
-  data: VideoInterface[];
+  data: PlaceInterface[];
 }
 
 const Home: React.FC<HomeProps> = ({ data }) => {
@@ -51,8 +52,9 @@ const Home: React.FC<HomeProps> = ({ data }) => {
     setSearchValue,
     hasVeg,
     setHasVeg,
-    filteredVideos,
-  } = useVideoFilters(data, userLocation);
+    filteredPlaces,
+    isSearching,
+  } = usePlaceFilters(data, userLocation);
 
   const {
     currentPage,
@@ -63,7 +65,7 @@ const Home: React.FC<HomeProps> = ({ data }) => {
     nextPage,
     prevPage,
     resetPagination,
-  } = usePagination(filteredVideos, PAGE_SIZE);
+  } = usePagination(filteredPlaces, PAGE_SIZE);
 
   // Reset pagination when filters change
   useEffect(() => {
@@ -125,18 +127,24 @@ const Home: React.FC<HomeProps> = ({ data }) => {
           </AccordionDetails>
         </Accordion>
 
+        {isSearching && (
+          <Box sx={{ width: '100%', mb: 4 }}>
+            <LinearProgress />
+          </Box>
+        )}
+
         {currentPageItems.length > 0 ? (
           <Grid container spacing={3} alignItems="stretch">
-            {currentPageItems.map((video, index) => (
-              <Grid item xs={12} sm={6} key={video._id}>
+            {currentPageItems.map((place, index) => (
+              <Grid item xs={12} sm={6} key={place._id}>
                 <FoodCard
-                  videoId={video.videoId}
-                  title={video.name || "No title"}
-                  description={video.videoTitle}
-                  displacement={video.displacement || 0}
-                  hasVeg={video.hasVeg || false}
+                  slug={place.slug}
+                  title={place.name}
+                  address={place.formatted_address || ""}
+                  displacement={place.displacement || 0}
+                  hasVeg={place.hasVeg || false}
                   height={isLargeScreen ? 300 : 200}
-                  thumbnail={isLargeScreen ? video.thumbnail?.large || "" : video.thumbnail?.small || ""}
+                  thumbnail={isLargeScreen ? place.thumbnail?.large || "" : place.thumbnail?.small || ""}
                   useLocation={!!userLocation}
                   setUseLocation={refreshLocation}
                   index={index}
@@ -173,9 +181,8 @@ const Home: React.FC<HomeProps> = ({ data }) => {
 };
 
 export const getStaticProps = async () => {
-  const data = await getAllVideos();
+  const data = await getAllPlaces();
 
-  // No need to sort here as useVideoFilters handles it
   return {
     props: { data },
     revalidate: 60,

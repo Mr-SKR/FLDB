@@ -12,10 +12,10 @@ import {
   LocationOn as LocationOnIcon,
   Phone as PhoneIcon,
 } from "@mui/icons-material";
-import { VideoInterface } from "../../types/types";
+import { PlaceInterface } from "../../types/types";
 
 interface RestaurantInfoProps {
-  data: VideoInterface;
+  data: PlaceInterface;
 }
 
 export const RestaurantInfo: React.FC<RestaurantInfoProps> = ({ data }) => {

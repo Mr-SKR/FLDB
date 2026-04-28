@@ -15,11 +15,11 @@ import RestaurantIcon from "@mui/icons-material/Restaurant";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 
 interface FoodCardProps {
-  videoId: string;
+  slug: string;
   height: number;
   thumbnail: string;
   title: string;
-  description: string;
+  address: string;
   displacement: number;
   hasVeg: boolean;
   useLocation: boolean;
@@ -30,7 +30,7 @@ interface FoodCardProps {
 export default function FoodCard(props: FoodCardProps): JSX.Element {
   return (
     <Card
-      id={props.videoId}
+      id={props.slug}
       sx={{
         height: "100%",
         display: "flex",
@@ -46,7 +46,7 @@ export default function FoodCard(props: FoodCardProps): JSX.Element {
       }}
     >
       <CardActionArea
-        href={`/fldb/${props.videoId}`}
+        href={`/place/${props.slug}`}
         sx={{ display: "flex", flexDirection: "column", flexGrow: 1, alignItems: "stretch" }}
       >
         <CardMedia sx={{ position: "relative" }}>
@@ -111,7 +111,7 @@ export default function FoodCard(props: FoodCardProps): JSX.Element {
               WebkitBoxOrient: "vertical",
             }}
           >
-            {props.description ? props.description : "No description"}
+            {props.address ? props.address : "No address"}
           </Typography>
         </CardContent>
       </CardActionArea>
@@ -134,7 +134,7 @@ export default function FoodCard(props: FoodCardProps): JSX.Element {
           {props.displacement ? `${props.displacement} Km` : "Distance"}
         </Button>
         <Button
-          href={`/fldb/${props.videoId}`}
+          href={`/place/${props.slug}`}
           size="small"
           variant="contained"
           sx={{

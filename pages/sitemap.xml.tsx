@@ -1,23 +1,22 @@
 import type { NextApiResponse } from "next";
 
-import { getAllVideoIds } from "../services/videoService";
+import { getAllPlaceSlugs } from "../services/videoService";
 
 const Sitemap = () => {
   return null;
-  //   return <></>;
 };
 
 export const getServerSideProps = async ({ res }: { res: NextApiResponse }) => {
-  const BASE_URL = process.env.HOST;
+  const BASE_URL = process.env.HOST || "https://fl-db.in";
 
   const staticPaths = ["", "about"].map((staticPagePath) => {
     return `${BASE_URL}/${staticPagePath}`;
   });
 
-  const products = await getAllVideoIds();
+  const slugs = await getAllPlaceSlugs();
 
-  const dynamicPaths = products.map((singleProduct) => {
-    return `${BASE_URL}/fldb/${singleProduct}`;
+  const dynamicPaths = slugs.map((slug) => {
+    return `${BASE_URL}/place/${slug}`;
   });
 
   const allPaths = [...staticPaths, ...dynamicPaths];

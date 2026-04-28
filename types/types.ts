@@ -1,9 +1,19 @@
-interface VideoInterface {
+export interface VideoInterface {
   _id: string;
   videoId: string;
   videoTitle: string;
   videoDescription?: string;
-  business_status?: string;
+  thumbnail?: {
+    small: string;
+    large: string;
+  };
+  hasVeg?: boolean; // Keep it here if needed for sync logic
+}
+
+export interface PlaceInterface {
+  _id: string;
+  place_id: string;
+  name: string;
   formatted_address?: string;
   geometry: {
     location: {
@@ -16,29 +26,21 @@ interface VideoInterface {
     };
   };
   international_phone_number?: string;
-  name: string;
+  rating?: string | number;
+  url?: string; // Google Maps URL
   opening_hours?: {
     open_now?: boolean;
     periods?: any[];
     weekday_text?: string[];
   };
-  place_id?: string;
-  rating?: string | number;
-  url?: string;
+  business_status?: string;
+  videoIds: string[]; // IDs of videos featuring this place
   hasVeg?: boolean;
+  displacement?: number; // Calculated field for UI
+  slug: string;
   thumbnail?: {
     small: string;
     large: string;
   };
-  displacement?: number;
-  title?: string;
+  searchContent?: string; // Aggregated text for full-text search
 }
-
-interface SearchIndexInterface {
-  _id: string;
-  videoId: string;
-  videoTitle: string;
-  title?: string;
-}
-
-export type { VideoInterface, SearchIndexInterface };
