@@ -2,6 +2,8 @@ import getUrls from "get-urls";
 import tracer from "trace-redirect";
 import { Client, PlaceData, PlaceInputType, PlaceDetailsRequest } from "@googlemaps/google-maps-services-js";
 import { syncConfig } from "../config/syncConfig";
+import { env } from "./env";
+import { logger } from "./logger";
 
 const googleMapsClient = new Client({});
 
@@ -17,11 +19,7 @@ const isValidUrl = (url: string) => {
 export const fetchLocationDetails = async (description: string) => {
   const allLocationDetails: Partial<PlaceData>[] = [];
   
-  const googleMapsKey = process.env.GOOGLE_MAPS_API_KEY;
-  if (!googleMapsKey) {
-    console.error("GOOGLE_MAPS_API_KEY is not defined");
-    return [];
-  }
+  const googleMapsKey = env.GOOGLE_MAPS_API_KEY;
 
   const urls = Array.from(getUrls(String(description)));
   const fields = [
@@ -44,11 +42,11 @@ export const fetchLocationDetails = async (description: string) => {
           const parsedUrl = new URL(url);
           const q = parsedUrl.searchParams.get("q");
           if (q && isValidUrl(q)) {
-            console.log(`[Sync] Extracting target from YouTube redirect: ${q}`);
+            logger.debug(`Extracting target from YouTube redirect: ${q}`, "locationDetails");
             url = q;
           }
         } catch (e) {
-          console.warn(`[Sync] Failed to parse YouTube redirect URL: ${url}`);
+          logger.warn(`Failed to parse YouTube redirect URL: ${url}`, "locationDetails");
         }
       }
 
@@ -60,9 +58,9 @@ export const fetchLocationDetails = async (description: string) => {
       // Check for various Google Maps link patterns
       if (/(maps|g\.page|g\.co|goo\.gl)/.test(url)) {
         try {
-          console.log(`[Sync] Tracing URL: ${url}`);
+          logger.debug(`Tracing URL: ${url}`, "locationDetails");
           const tracerResult = await tracer(url);
-          console.log(`[Sync] Resolved to: ${tracerResult}`);
+          logger.debug(`Resolved to: ${tracerResult}`, "locationDetails");
           
           let locationURLParams: { ftid?: string; cid?: string } | null = null;
 
@@ -87,7 +85,7 @@ export const fetchLocationDetails = async (description: string) => {
           let resolvedPlace: Partial<PlaceData> | null = null;
 
           if (locationURLParams) {
-            console.log(`[Sync] Calling Place Details with params:`, locationURLParams);
+            logger.debug(`Calling Place Details with params`, "locationDetails", { locationURLParams });
             const response = await googleMapsClient.placeDetails({
               params: {
                 ...locationURLParams,
@@ -100,7 +98,7 @@ export const fetchLocationDetails = async (description: string) => {
             if (result && result.name && result.name !== "0") {
               resolvedPlace = result;
             } else {
-              console.warn(`[Sync] Place Details returned invalid result (name: ${result?.name}). Trying fallback.`);
+              logger.warn(`Place Details returned invalid result (name: ${result?.name}). Trying fallback.`, "locationDetails");
             }
           } 
           
@@ -109,7 +107,7 @@ export const fetchLocationDetails = async (description: string) => {
             const nameMatch = tracerResult.match(/\/maps\/place\/([^/]+)/);
             if (nameMatch) {
               const decodedName = decodeURIComponent(nameMatch[1].replace(/\+/g, " "));
-              console.log(`[Sync] Falling back to search by name: ${decodedName}`);
+              logger.debug(`Falling back to search by name: ${decodedName}`, "locationDetails");
               const findResponse = await googleMapsClient.findPlaceFromText({
                 params: {
                   input: decodedName,
@@ -138,10 +136,10 @@ export const fetchLocationDetails = async (description: string) => {
           if (resolvedPlace) {
             allLocationDetails.push(resolvedPlace);
           } else {
-            console.warn(`[Sync] Could not resolve location from URL: ${tracerResult}`);
+            logger.warn(`Could not resolve location from URL: ${tracerResult}`, "locationDetails");
           }
         } catch (e) {
-          console.error(`Error processing Google Maps URL ${url}:`, e);
+          logger.error(`Error processing Google Maps URL ${url}`, "locationDetails", e);
         }
       }
     }

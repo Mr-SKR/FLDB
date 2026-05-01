@@ -5,6 +5,8 @@ const VideoSchema = new Schema<VideoInterface>({
   videoId: { type: String, required: true, unique: true },
   videoTitle: { type: String, required: true },
   videoDescription: String,
+  channelId: String,
+  channelTitle: String,
   thumbnail: {
     small: String,
     large: String,

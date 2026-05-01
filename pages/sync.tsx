@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Container,
   Paper,
@@ -15,6 +15,10 @@ import {
   Chip,
   LinearProgress,
   Grid,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
 } from "@mui/material";
 import {
   Sync as SyncIcon,
@@ -24,6 +28,7 @@ import {
 } from "@mui/icons-material";
 import ResponsiveDrawer from "../components/headers/Header";
 import Head from "next/head";
+import { logger } from "../lib/logger";
 
 interface VideoItem {
   videoId: string;
@@ -31,17 +36,51 @@ interface VideoItem {
   thumbnail: string;
   isVeg: boolean;
   isSynced: boolean;
+  channelTitle?: string;
+  channelId?: string;
   syncStatus?: "idle" | "loading" | "success" | "error";
   error?: string;
 }
 
+interface PlaylistSource {
+  channelId: string;
+  channelTitle: string;
+  playlists: { id: string, isVeg: boolean, name: string }[];
+}
+
 const SyncPage = () => {
   const [secret, setSecret] = useState("");
+  const [sources, setSources] = useState<PlaylistSource[]>([]);
+  const [selectedPlaylist, setSelectedPlaylist] = useState("");
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [nextPageToken, setNextPageToken] = useState<string | undefined>(undefined);
   const [loadingList, setLoadingList] = useState(false);
   const [syncingAll, setSyncingAll] = useState(false);
   const [globalError, setGlobalError] = useState("");
+
+  const fetchSources = useCallback(async () => {
+    if (!secret) return;
+    try {
+      const res = await fetch(`/api/sync?action=get-sources`, {
+        headers: { "Authorization": `Bearer ${secret}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSources(data);
+        if (data.length > 0 && data[0].playlists.length > 0) {
+          setSelectedPlaylist(data[0].playlists[0].id);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch sources", err);
+    }
+  }, [secret]);
+
+  useEffect(() => {
+    if (secret) {
+      fetchSources();
+    }
+  }, [secret, fetchSources]);
 
   const fetchVideoList = async (token?: string) => {
     if (!secret) {
@@ -51,7 +90,7 @@ const SyncPage = () => {
     setLoadingList(true);
     setGlobalError("");
     try {
-      const url = `/api/sync?action=list${token ? `&pageToken=${token}` : ""}`;
+      const url = `/api/sync?action=list${token ? `&pageToken=${token}` : ""}${selectedPlaylist ? `&playlistId=${selectedPlaylist}` : ""}`;
       const res = await fetch(url, {
         headers: {
           "Authorization": `Bearer ${secret}`
@@ -59,7 +98,13 @@ const SyncPage = () => {
       });
       if (!res.ok) throw new Error("Failed to fetch list");
       const data = await res.json();
-      setVideos(data.videos.map((v: VideoItem) => ({ ...v, syncStatus: "idle" })));
+      const mappedVideos = data.videos.map((v: VideoItem) => ({ ...v, syncStatus: "idle" }));
+      // Sort unsynced videos to the top
+      const sortedVideos = mappedVideos.sort((a: VideoItem, b: VideoItem) => {
+        if (a.isSynced === b.isSynced) return 0;
+        return a.isSynced ? 1 : -1;
+      });
+      setVideos(sortedVideos);
       setNextPageToken(data.nextPageToken);
     } catch (err: unknown) {
       setGlobalError(err instanceof Error ? err.message : "An error occurred");
@@ -115,7 +160,7 @@ const SyncPage = () => {
     for (const video of unsyncedVideos) {
       const success = await handleSyncVideo(video.videoId, "soft", video.isVeg);
       if (!success) {
-        console.error(`Failed to sync ${video.videoId}`);
+        logger.error(`Failed to sync ${video.videoId}`, "SyncPage");
       }
       await new Promise(resolve => setTimeout(resolve, 500));
     }
@@ -150,7 +195,7 @@ const SyncPage = () => {
           </Box>
           
           <Typography variant="body2" color="text.secondary" mb={4}>
-            Fetch the latest videos from YouTube playlists (50 at a time) and choose which ones to sync.
+            Fetch the latest videos from YouTube playlists and choose which ones to sync.
           </Typography>
 
           <Grid container spacing={2} sx={{ mb: 4 }}>
@@ -164,26 +209,44 @@ const SyncPage = () => {
                 onChange={(e) => setSecret(e.target.value)}
               />
             </Grid>
-            <Grid item xs={12} sm={3}>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Target Playlist</InputLabel>
+                <Select
+                  value={selectedPlaylist}
+                  label="Target Playlist"
+                  onChange={(e) => setSelectedPlaylist(e.target.value)}
+                >
+                  {sources.flatMap(source => 
+                    source.playlists.map(playlist => (
+                      <MenuItem key={playlist.id} value={playlist.id}>
+                        {source.channelTitle} - {playlist.name}
+                      </MenuItem>
+                    ))
+                  )}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
               <Button
                 fullWidth
                 variant="contained"
                 onClick={() => fetchVideoList()}
                 disabled={loadingList || syncingAll}
-                sx={{ height: "100%", py: { xs: 1.5, sm: 0 } }}
+                sx={{ py: 1.5 }}
                 startIcon={loadingList ? <CircularProgress size={20} color="inherit" /> : <CloudDownloadIcon />}
               >
-                Load First Page
+                Load Playlist
               </Button>
             </Grid>
-            <Grid item xs={12} sm={3}>
+            <Grid item xs={12} sm={6}>
               <Button
                 fullWidth
                 variant="contained"
                 color="success"
                 onClick={handleSyncAll}
                 disabled={loadingList || syncingAll || videos.length === 0}
-                sx={{ height: "100%", py: { xs: 1.5, sm: 0 } }}
+                sx={{ py: 1.5 }}
                 startIcon={syncingAll ? <CircularProgress size={20} color="inherit" /> : <PlayArrowIcon />}
               >
                 Sync Current Page
@@ -207,7 +270,7 @@ const SyncPage = () => {
           <List sx={{ width: "100%", bgcolor: "background.paper" }}>
             {videos.length === 0 && !loadingList && (
               <Box textAlign="center" py={4} color="text.disabled">
-                No videos loaded. Enter secret and click &quot;Load First Page&quot;.
+                No videos loaded. Enter secret and click &quot;Load Playlist&quot;.
               </Box>
             )}
             
@@ -236,6 +299,9 @@ const SyncPage = () => {
                         {video.title}
                       </Typography>
                     </Box>
+                    <Typography variant="caption" color="text.secondary" display="block" mb={0.5}>
+                      {video.channelTitle || "Unknown Channel"}
+                    </Typography>
                     <Box display="flex" gap={1}>
                       {video.isVeg && <Chip label="Veg" size="small" color="success" variant="outlined" />}
                       {video.isSynced && (

@@ -1,5 +1,6 @@
 import React from "react";
 import { Box, Typography, CircularProgress } from "@mui/material";
+import Image from "next/image";
 import FoodCard from "../cards/Card";
 import { PlaceInterface } from "../../types/types";
 import { UserLocation } from "../../hooks/useGeolocation";
@@ -57,21 +58,47 @@ export const FeedViewer: React.FC<FeedViewerProps> = ({
           />
         ))
       ) : !isSearching && (
-        <Box sx={{ 
-          height: "100%", 
-          display: "flex", 
-          flexDirection: "column", 
-          justifyContent: "center", 
+        <Box sx={{
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
           alignItems: "center",
+          background: "linear-gradient(180deg, #121212 0%, #000000 100%)",
           color: "white",
           p: 4,
           textAlign: "center"
         }}>
-          <Typography variant="h6" gutterBottom>No restaurants found</Typography>
-          <Typography variant="body2" sx={{ opacity: 0.7 }}>Try adjusting your filters</Typography>
+          <Box sx={{ mb: 4, opacity: 0.9 }}>
+             <Image 
+               src="/img/walking-chef.gif" 
+               alt="Walking Chef" 
+               width={120}
+               height={120}
+               style={{ borderRadius: "12px", objectFit: "contain" }} 
+               unoptimized
+             />
+          </Box>
+          <Typography variant="h5" sx={{ fontWeight: 800, mb: 1, letterSpacing: "-0.5px" }}>
+            Nothing on the menu?
+          </Typography>
+          <Typography variant="body1" sx={{ opacity: 0.6, maxWidth: "260px", mx: "auto", mb: 4 }}>
+            We couldn&apos;t find any restaurants matching your current filters.
+          </Typography>
+          <Typography 
+            variant="button" 
+            sx={{ 
+              color: "primary.main", 
+              fontWeight: 700,
+              cursor: "pointer",
+              "&:hover": { textDecoration: "underline" }
+            }}
+            onClick={() => window.location.reload()}
+          >
+            Clear all filters
+          </Typography>
         </Box>
       )}
-
       {/* Infinite Scroll Sentinel */}
       <Box ref={observerTarget} sx={{ height: "10px", width: "100%" }} />
 

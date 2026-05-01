@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { getAccurateLocation } from "../utils/userLocation";
+import { logger } from "../lib/logger";
 
 export interface UserLocation {
   lat: number;
@@ -57,7 +58,7 @@ export const useGeolocation = () => {
           });
         }
       } catch (e) {
-        console.error("Failed to parse saved location", e);
+        logger.error("Failed to parse saved location", "useGeolocation", e);
       }
     }
   }, []);

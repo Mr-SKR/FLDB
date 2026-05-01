@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import dbConnect from "../../lib/dbConnect";
 import Place from "../../models/Place";
 import { serializeDocuments } from "../../utils/serialize";
+import { logger } from "../../lib/logger";
 
 export default async function handler(
   req: NextApiRequest,
@@ -23,6 +24,8 @@ export default async function handler(
   if (limitNum > 50) limitNum = 50;
   
   const skip = (pageNum - 1) * limitNum;
+
+  logger.debug("Search query received", "searchAPI", { q, veg, page, limit });
 
   try {
     await dbConnect();
@@ -94,7 +97,7 @@ export default async function handler(
       return res.status(200).json(serializeDocuments(results));
     }
   } catch (error) {
-    console.error("Search API error:", error);
+    logger.error("Search API error", "searchAPI", error);
     return res.status(500).json({ message: "Search failed", error: (error as Error).message });
   }
 }

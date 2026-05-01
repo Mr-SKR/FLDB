@@ -12,6 +12,7 @@ import {
 } from "@mui/material";
 import { Tune as TuneIcon, Close as CloseIcon } from "@mui/icons-material";
 import Head from "next/head";
+import { logger } from "../lib/logger";
 
 import { useGeolocation } from "../hooks/useGeolocation";
 import { usePlaceFilters } from "../hooks/usePlaceFilters";
@@ -81,7 +82,7 @@ const Home: React.FC<HomeProps> = ({ data }) => {
             return;
           }
         } catch (e) {
-          console.error("Error checking location permissions:", e);
+          logger.error("Error checking location permissions", "Home", e);
         }
       }
 
@@ -298,7 +299,7 @@ export const getStaticProps = async () => {
       revalidate: 60,
     };
   } catch (error) {
-    console.error("Error in getStaticProps:", error);
+    logger.error("Error in getStaticProps", "Home", error);
     return {
       props: { data: [] },
       revalidate: 60,

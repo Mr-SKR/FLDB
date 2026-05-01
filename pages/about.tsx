@@ -12,99 +12,97 @@ const faqs = [
     qid: 1,
     title: "What is FLDb?",
     description:
-      "Food Lovers Database(FLDb) is a collection of food Vlogs from Food Lovers TV (https://www.youtube.com/channel/UC-Lq6oBPTgTXT_K-ylWL6hg)",
+      "Food Lovers Database (FLDb) is a specialized discovery platform that aggregates food reviews from popular YouTube vloggers like Food Lovers TV, FoodyMonk, and more. It organizes hundreds of reviews into a searchable, location-aware interface.",
   },
   {
     qid: 2,
-    title: "What is purpose of FLDb?",
+    title: "What is the purpose of FLDb?",
     description:
-      "FLDb serves the same purpose for Food Lovers TV followers as that of IMDb.com for movie followers.",
+      "FLDb bridges the gap between entertaining video content and actionable dining discovery. We extract location data from trusted food reviewers and enrich it with Google Maps details to help you find your next great meal.",
   },
   {
     qid: 3,
-    title: "Who are the targetted audience of this site?",
+    title: "Who is the target audience for this site?",
     description:
-      "Fellow Bengalurians and people living/travelling around Karnataka as most of the Food Lovers TV Vlogs are from this region",
+      "Food enthusiasts and travelers who follow popular food vloggers and want a structured, geographic way to explore the restaurants featured in their videos.",
   },
   {
     qid: 4,
-    title:
-      "Why not just use the Youtube channel of Food Lovers TV to browse through things?",
+    title: "Why use FLDb instead of just browsing YouTube?",
     description:
-      "Finding videos on YouTube is cumbersome and there is no easy way to search for Food Lovers TV reviewed restaurants near you. FLDb exists to help you overcome these issues",
+      "While YouTube is great for entertainment, it isn't optimized for geographic discovery. FLDb provides location-based search, distance sorting, and dietary filters that make it easy to find recommendations 'near you' in real-time.",
   },
   {
     qid: 5,
-    title: "Is FLDb owned or sponsored by Kripal Amanna/Food Lovers TV",
+    title: "Is FLDb owned or sponsored by these YouTube channels?",
     description:
-      "Nope. Although, the name is inspired from the youtube channel",
+      "No. FLDb is an independent fan-made project. We are not affiliated with, sponsored by, or endorsed by Food Lovers TV, FoodyMonk, or any other featured creators. We simply aim to make their incredible content more accessible to the community.",
   },
   {
     qid: 6,
     title: "Everything has a story behind it. What is the story behind FLDb?",
     description:
-      "My friends and I travel throughout Karnataka quite frequently and we all agree to the point that finding good food/restaurants while travelling is not an easy task. So we started gathering information of all the popular restaurants throughout Karnataka. JK, We don't have time for that. So we chose a popular YouTube channel that reviews food from popular restaurants from all over Karnataka and we found content from Food Lovers TV to meet our needs. We quickly realized that it is not an easy task to watch all those videos, remember the restaurants and the places they are situated in. Hence, FLDb came into existence",
+      "My friends and I travel throughout Karnataka quite frequently, and we all agreed that finding great food while on the road is surprisingly difficult. Initially, we thought about manually cataloging every popular restaurant—but we quickly realized we didn't have the time for that! Instead, I decided to build a tool that organizes content from my favorite YouTube channels like Food Lovers TV and FoodyMonk. I found it cumbersome to watch hours of video just to remember a restaurant's name or location, so FLDb was born to solve that exact problem for myself and fellow travelers.",
   },
   {
     qid: 7,
     title: "How does FLDb plan to make money?",
     description:
-      "The plan is to not make money. You heard me right, this site is free to all and does not include any ads, paid promotions or sponsorship. This site is a result of what started as my hobby project",
+      "The plan is to not make money. You heard me right—this site is free to all and does not include any ads, paid promotions, or sponsorships. FLDb started as my hobby project, and I intend to keep it that way.",
   },
   {
     qid: 8,
     title: "How will FLDb sustain without making any money?",
     description:
-      "This site depends on a bunch of free services offered by companies like Render.com, Netlify.com, GitHub.com and MongoDB.com. The only things that can't be obtained for free is the domain ownership and a bunch of API calls made to Google Places API which I am ready to bear myself. I will continue to keep this site free from ads, promotions, sponsorships etc., as long as it doesn't punch a hole in my pocket",
+      "This site depends on a bunch of free services offered by companies like Vercel, GitHub, and MongoDB. The only things that can't be obtained for free are the domain ownership and the Google Places API calls, which I am happy to bear myself as a personal contribution. I will continue to keep this site free from ads as long as it doesn't punch too big a hole in my pocket!",
   },
   {
     qid: 9,
     title: "How can I contribute to FLDb?",
     description:
-      "While financial contributions are not encouraged, you can always contribute from technical point of view by submitting feature requests, bug report, code contribution etc., @ https://github.com/Mr-SKR/FLDB/issues or marketing by spreading the existence of this site by word of mouth. I'd genuinely feel happy if somebody recommends this site to me someday through the power of the word of mouth",
+      "Technical contributions are always welcome! You can report bugs, suggest new channels, or contribute code at https://github.com/Mr-SKR/FLDB. Helping spread the word through word-of-mouth is also a huge help.",
   },
   {
     qid: 10,
     title: "Is this site highly available or scalable?",
     description:
-      "Nope. This site depends on a bunch of free services offered by companies like Render.com, Netlify.com, GitHub.com and MongoDB.com. These free services can't guarantee high availability and scalability. Since I do not expect a high amount of traffic flowing to this site, this site should manage just fine. My load testing results say that 30 concurrent users can use this site without facing any issues",
+      "The site uses a serverless architecture designed for stability and responsiveness. While we don't guarantee 100% 'enterprise' uptime, it is more than capable of handling our community of food lovers efficiently.",
   },
   {
     qid: 11,
     title: "What is the tech stack used to build this application?",
     description:
-      "Next.js, MongoDB, and MUI. The application is a self-contained Next.js project where both the frontend and backend logic (API routes/Server-side fetching) are co-located. Please raise issues @ https://github.com/Mr-SKR/FLDB/issues",
+      "FLDb is built using Next.js, TypeScript, MongoDB, and Material UI (MUI). It features a mobile-first design with a custom background synchronization engine.",
   },
   {
     qid: 12,
-    title: "How can I trust this website?",
+    title: "Is the source code available?",
     description:
-      "The source code for this entire application is publicly available @ https://github.com/Mr-SKR/FLDB. Feel free to inspect it. The code is licensed under MIT, so you are free to re-use it to build similar sites.",
+      "Yes, the entire project is open-source under the MIT License. You can find it at https://github.com/Mr-SKR/FLDB. We encourage transparency and collaborative improvement.",
   },
   {
     qid: 13,
-    title: "Nearby page is displaying inaccurate distance",
+    title: "How is the distance to restaurants calculated?",
     description:
-      "The displacement shown is the shortest distance from your initial position to the restaurant (Imagine a straight line). It is calculated using the Haversine formula, which is accurate for most use cases but may vary slightly due to the earth's curvature.",
+      "We use the Haversine formula to calculate the shortest distance (as-the-crow-flies) from your location to the restaurant. It's a reliable estimate for nearby discovery, though actual travel distance may vary.",
   },
   {
     qid: 14,
-    title:
-      "How does FLDb display information such as restaurant's ratings, contact number etc.?",
+    title: "How does FLDb aggregate its data?",
     description:
-      "FLDb periodically gathers video information and Google Maps links from the YouTube channel using the YouTube Data API. These links are then used to fetch details like ratings, contact info, and operating hours via the Google Places API. This data is stored and served directly from our integrated backend.",
+      "Our synchronization engine periodically scans configured YouTube channels and playlists. It identifies Google Maps links in video descriptions and uses the Google Places API to retrieve accurate ratings, photos, and contact information.",
   },
   {
     qid: 15,
-    title: "Are veg friendly labelled restaurants pure veg?",
+    title: "What does the 'Veg Friendly' label mean?",
     description:
-      "No. These are the restaurants that have vegetarian options in the menu. They might or might not be pure vegetarian restaurants",
+      "Restaurants tagged as 'Veg Friendly' have documented vegetarian options. This includes both exclusively vegetarian (Pure Veg) establishments and those with significant vegetarian menu choices.",
   },
   {
     qid: 16,
-    title: "What all can I search using the searchbar in homepage?",
+    title: "What can I search for using the search bar?",
     description:
-      "Searchbar in homepage can be used to search for video title which in most cases includes restaurant name and location information. So you can search for video title, restaurant name or place if you remember any of these keywords partially",
+      "You can search by restaurant name, city, area, or even video title and description keywords. Our search is designed to help you find recommendations based on whatever details you remember.",
   },
 ];
 

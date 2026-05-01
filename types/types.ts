@@ -3,9 +3,11 @@ export interface VideoInterface {
   videoId: string;
   videoTitle: string;
   videoDescription?: string;
+  channelId?: string;
+  channelTitle?: string;
   thumbnail?: {
-    small: string;
-    large: string;
+    small?: string;
+    large?: string;
   };
   hasVeg?: boolean; // Keep it here if needed for sync logic
 }
@@ -39,8 +41,8 @@ export interface PlaceInterface {
   displacement?: number; // Calculated field for UI
   slug: string;
   thumbnail?: {
-    small: string;
-    large: string;
+    small?: string;
+    large?: string;
   };
   searchContent?: string; // Aggregated text for full-text search
 }

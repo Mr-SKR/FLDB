@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { PlaceInterface } from "../types/types";
 import { getDisplacementFromLatLonInKm } from "../utils/getGeoDisplacement";
 import { UserLocation } from "./useGeolocation";
+import { logger } from "../lib/logger";
 
 const PAGE_SIZE = 10;
 
@@ -67,7 +68,7 @@ export const usePlaceFilters = (initialData: PlaceInterface[], userLocation: Use
         setHasMore(data.length === PAGE_SIZE);
       }
     } catch (err) {
-      console.error("Fetch failed:", err);
+      logger.error("Fetch failed", "usePlaceFilters", err);
     } finally {
       setIsInitialLoading(false);
       setIsSearching(false);

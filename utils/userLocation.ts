@@ -8,10 +8,6 @@ const getLocationPermissionState = async (): Promise<string> => {
   return result.state;
 };
 
-// const LocationError = (err) => {
-//   console.error(`ERROR(${err.code}): ${err.message}`);
-// };
-
 const getAccurateLocation = (): Promise<GeolocationPosition> => {
   return new Promise((resolve, reject) => {
     navigator.geolocation.getCurrentPosition(resolve, reject, geoSettings);
