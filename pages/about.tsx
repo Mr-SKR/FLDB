@@ -1,6 +1,8 @@
 import React from "react";
-import { Box, Grid, Container } from "@mui/material";
+import { Box, Grid, Container, Button } from "@mui/material";
 import Head from "next/head";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import { useRouter } from "next/router";
 
 import ResponsiveDrawer from "../components/headers/Header";
 import CustomAccordion from "../components/accordion/accordion";
@@ -107,6 +109,8 @@ const faqs = [
 ];
 
 function About(): JSX.Element {
+  const router = useRouter();
+
   return (
     <React.Fragment>
       <Head>
@@ -117,31 +121,37 @@ function About(): JSX.Element {
           key="description"
         />
       </Head>
-      <ResponsiveDrawer />
-      <Box
-        component={Container}
-        sx={{
-          maxWidth: "720px",
-          justfyContent: "center",
-          padding: "0",
-          marginTop: "2rem",
-        }}
-      >
-        <Grid
-          container
-          spacing={2}
-          sx={{ justifyContent: "center", marginBottom: "1rem" }}
+      <ResponsiveDrawer showAbout={false} showThemeToggle={false} />
+      <Container maxWidth="md" sx={{ mt: 3, mb: 4 }}>
+        <Button
+          startIcon={<ArrowBackIcon />}
+          onClick={() => router.push("/")}
+          sx={{ mb: 3, textTransform: "none", fontWeight: "bold" }}
         >
-          {faqs.map((faq) => (
-            <CustomAccordion
-              key={faq.qid}
-              qid={faq.qid}
-              title={faq.title}
-              description={faq.description}
-            />
-          ))}
-        </Grid>
-      </Box>
+          Back to Home
+        </Button>
+        <Box
+          sx={{
+            justfyContent: "center",
+            padding: "0",
+          }}
+        >
+          <Grid
+            container
+            spacing={2}
+            sx={{ justifyContent: "center", marginBottom: "1rem" }}
+          >
+            {faqs.map((faq) => (
+              <CustomAccordion
+                key={faq.qid}
+                qid={faq.qid}
+                title={faq.title}
+                description={faq.description}
+              />
+            ))}
+          </Grid>
+        </Box>
+      </Container>
     </React.Fragment>
   );
 }

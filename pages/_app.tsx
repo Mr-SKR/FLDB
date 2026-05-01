@@ -4,8 +4,10 @@ import CssBaseline from "@mui/material/CssBaseline";
 import type { AppProps } from "next/app";
 import HEAD from "next/head";
 import { PaletteMode } from "@mui/material";
+import { useRouter } from "next/router";
 
 import { getDesignTokens } from "../components/ui/Theme";
+import { LoadingScreen } from "../components/ui/LoadingScreen";
 
 export const ColorModeContext = createContext({ toggleColorMode: () => {
   // Default implementation
@@ -13,6 +15,8 @@ export const ColorModeContext = createContext({ toggleColorMode: () => {
 
 function MyApp({ Component, pageProps }: AppProps) {
   const [mode, setMode] = useState<PaletteMode>("light");
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   // Persist theme choice in localStorage
   useEffect(() => {
@@ -23,6 +27,26 @@ function MyApp({ Component, pageProps }: AppProps) {
       setMode("dark");
     }
   }, []);
+
+  // Router loading state
+  useEffect(() => {
+    const handleStart = (url: string) => {
+      if (url !== router.asPath) {
+        setLoading(true);
+      }
+    };
+    const handleComplete = () => setLoading(false);
+
+    router.events.on("routeChangeStart", handleStart);
+    router.events.on("routeChangeComplete", handleComplete);
+    router.events.on("routeChangeError", handleComplete);
+
+    return () => {
+      router.events.off("routeChangeStart", handleStart);
+      router.events.off("routeChangeComplete", handleComplete);
+      router.events.off("routeChangeError", handleComplete);
+    };
+  }, [router]);
 
   const colorMode = useMemo(
     () => ({
@@ -54,6 +78,7 @@ function MyApp({ Component, pageProps }: AppProps) {
       </HEAD>
       <ThemeProvider theme={theme}>
         <CssBaseline />
+        {loading && <LoadingScreen />}
         <Component {...pageProps} />
       </ThemeProvider>
     </ColorModeContext.Provider>

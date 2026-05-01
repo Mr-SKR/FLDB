@@ -11,7 +11,12 @@ import { useRouter } from "next/router";
 import { useTheme } from "@mui/material/styles";
 import { ColorModeContext } from "../../pages/_app";
 
-export default function SearchAppBar() {
+interface HeaderProps {
+  showThemeToggle?: boolean;
+  showAbout?: boolean;
+}
+
+export default function SearchAppBar({ showThemeToggle = true, showAbout = true }: HeaderProps) {
   const router = useRouter();
   const theme = useTheme();
   const colorMode = React.useContext(ColorModeContext);
@@ -42,27 +47,31 @@ export default function SearchAppBar() {
             </IconButton>
           </Box>
 
-          <IconButton sx={{ ml: 1 }} onClick={colorMode.toggleColorMode} color="inherit">
-            {theme.palette.mode === "dark" ? <Brightness7Icon /> : <Brightness4Icon />}
-          </IconButton>
+          {showThemeToggle && (
+            <IconButton sx={{ ml: 1 }} onClick={colorMode.toggleColorMode} color="inherit">
+              {theme.palette.mode === "dark" ? <Brightness7Icon /> : <Brightness4Icon />}
+            </IconButton>
+          )}
 
-          <IconButton
-            size="large"
-            edge="end"
-            color="inherit"
-            aria-label="about"
-            sx={{
-              ml: 1,
-              "&.MuiButtonBase-root:hover": {
-                bgcolor: "transparent",
-              },
-            }}
-            onClick={() => {
-              router.push("/about");
-            }}
-          >
-            <InfoOutlinedIcon />
-          </IconButton>
+          {showAbout && (
+            <IconButton
+              size="large"
+              edge="end"
+              color="inherit"
+              aria-label="about"
+              sx={{
+                ml: 1,
+                "&.MuiButtonBase-root:hover": {
+                  bgcolor: "transparent",
+                },
+              }}
+              onClick={() => {
+                router.push("/about");
+              }}
+            >
+              <InfoOutlinedIcon />
+            </IconButton>
+          )}
         </Toolbar>
       </AppBar>
     </Box>

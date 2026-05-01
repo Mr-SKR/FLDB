@@ -10,14 +10,24 @@ import {
   InputAdornment,
   Paper,
   Button,
+  Stack,
+  Divider,
 } from "@mui/material";
 import RotateLeftIcon from "@mui/icons-material/RotateLeft";
 import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
 import RestaurantIcon from "@mui/icons-material/Restaurant";
 import MyLocationIcon from "@mui/icons-material/MyLocation";
+import GpsFixedIcon from "@mui/icons-material/GpsFixed";
+import GpsOffIcon from "@mui/icons-material/GpsOff";
 import { UserLocation } from "../../hooks/useGeolocation";
-import { alpha } from "@mui/material/styles";
+import { alpha, keyframes } from "@mui/material/styles";
+
+const pulse = keyframes`
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(76, 175, 80, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+`;
 
 interface FilterSectionProps {
   searchValue: string;
@@ -40,132 +50,158 @@ export const FilterSection: React.FC<FilterSectionProps> = ({
 }) => {
   return (
     <Box>
-      <Grid container spacing={3}>
-        <Grid item xs={12}>
-          <TextField
-            fullWidth
-            placeholder="Search restaurant or dish..."
-            variant="outlined"
-            value={searchValue}
-            onChange={(e) => setSearchValue(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon color="action" />
-                </InputAdornment>
-              ),
-              endAdornment: searchValue && (
-                <InputAdornment position="end">
-                  <IconButton onClick={() => setSearchValue("")} size="small">
-                    <ClearIcon />
-                  </IconButton>
-                </InputAdornment>
-              ),
-              sx: { borderRadius: "12px", bgcolor: "background.paper" }
+      <Stack spacing={3}>
+        {/* Search Section */}
+        <TextField
+          fullWidth
+          placeholder="Search restaurant or dish..."
+          variant="outlined"
+          value={searchValue}
+          onChange={(e) => setSearchValue(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon color="action" />
+              </InputAdornment>
+            ),
+            endAdornment: searchValue && (
+              <InputAdornment position="end">
+                <IconButton onClick={() => setSearchValue("")} size="small">
+                  <ClearIcon />
+                </IconButton>
+              </InputAdornment>
+            ),
+            sx: { borderRadius: "16px", bgcolor: "background.default" },
+          }}
+        />
+
+        {/* Filters Row */}
+        <Box sx={{ display: "flex", gap: 1 }}>
+          <Paper
+            elevation={0}
+            onClick={() => setHasVeg(!hasVeg)}
+            sx={{
+              flex: 1,
+              p: 1.5,
+              borderRadius: "16px",
+              cursor: "pointer",
+              border: "1px solid",
+              borderColor: hasVeg ? "success.main" : "divider",
+              bgcolor: hasVeg ? alpha("#4caf50", 0.1) : "background.default",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 1,
+              transition: "all 0.2s",
             }}
-          />
-        </Grid>
-
-        <Grid item xs={12}>
-          <Box display="flex" flexWrap="wrap" gap={2} justifyContent="space-around">
-            <Paper
-              elevation={0}
+          >
+            <RestaurantIcon
+              fontSize="small"
+              color={hasVeg ? "success" : "action"}
+            />
+            <Typography
+              variant="body2"
               sx={{
-                p: 1,
-                px: 2,
-                borderRadius: "12px",
-                border: "1px solid",
-                borderColor: userLocation ? "primary.light" : "divider",
-                bgcolor: userLocation ? (theme) => alpha(theme.palette.primary.main, 0.08) : "transparent",
-                display: "flex",
-                alignItems: "center",
-                flexGrow: 1,
-                maxWidth: { sm: "45%" }
+                fontWeight: "bold",
+                color: hasVeg ? "success.dark" : "text.secondary",
               }}
             >
-              <MyLocationIcon color={userLocation ? "primary" : "disabled"} sx={{ mr: 1 }} />
-              <FormControlLabel
-                sx={{ m: 0, flexGrow: 1, color: "text.primary" }}
-                control={
-                  <Switch
-                    size="small"
-                    checked={!!userLocation}
-                    onChange={() => (userLocation ? clearLocation() : refreshLocation())}
-                  />
-                }
-                label={
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    Nearby Restaurants
-                  </Typography>
-                }
-              />
-            </Paper>
+              Veg Friendly
+            </Typography>
+          </Paper>
+        </Box>
 
-            <Paper
-              elevation={0}
-              sx={{
-                p: 1,
-                px: 2,
-                borderRadius: "12px",
-                border: "1px solid",
-                borderColor: hasVeg ? "success.light" : "divider",
-                bgcolor: hasVeg ? (theme) => alpha(theme.palette.success.main, 0.08) : "transparent",
-                display: "flex",
-                alignItems: "center",
-                flexGrow: 1,
-                maxWidth: { sm: "45%" }
-              }}
-            >
-              <RestaurantIcon color={hasVeg ? "success" : "disabled"} sx={{ mr: 1 }} />
-              <FormControlLabel
-                sx={{ m: 0, flexGrow: 1, color: "text.primary" }}
-                control={
-                  <Switch
-                    size="small"
-                    color="success"
-                    checked={hasVeg}
-                    onChange={(e) => setHasVeg(e.target.checked)}
-                  />
-                }
-                label={
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    Veg Only
-                  </Typography>
-                }
-              />
-            </Paper>
-          </Box>
-        </Grid>
+        <Divider>
+          <Typography
+            variant="caption"
+            sx={{ color: "text.disabled", fontWeight: "bold", px: 1 }}
+          >
+            LOCATION STATUS
+          </Typography>
+        </Divider>
 
-        {userLocation && (
-          <Grid item xs={12}>
-            <Box display="flex" justifyContent="center">
+        {/* Location Dashboard Section */}
+        <Paper
+          elevation={0}
+          sx={{
+            p: 2,
+            borderRadius: "20px",
+            bgcolor: "background.default",
+            border: "1px solid",
+            borderColor: userLocation ? alpha("#4caf50", 0.3) : "divider",
+          }}
+        >
+          {userLocation ? (
+            <Stack spacing={2}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                <Box
+                  sx={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: "50%",
+                    bgcolor: "#4caf50",
+                    animation: `${pulse} 2s infinite`,
+                  }}
+                />
+                <Box sx={{ flexGrow: 1 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
+                    Live Location Active
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                    Last updated: {new Date(userLocation.lastUpdated).toLocaleTimeString()}
+                  </Typography>
+                </Box>
+                <IconButton 
+                  size="small" 
+                  onClick={refreshLocation}
+                  sx={{ bgcolor: "action.hover" }}
+                >
+                  <RotateLeftIcon fontSize="small" />
+                </IconButton>
+              </Box>
+              
               <Button
-                variant="text"
+                fullWidth
+                variant="outlined"
+                color="error"
                 size="small"
-                onClick={refreshLocation}
-                startIcon={<RotateLeftIcon fontSize="small" />}
+                startIcon={<GpsOffIcon />}
+                onClick={clearLocation}
                 sx={{
-                  color: "text.secondary",
+                  borderRadius: "12px",
                   textTransform: "none",
-                  borderRadius: "20px",
-                  px: 2,
-                  py: 0.5,
-                  bgcolor: "action.hover",
-                  "&:hover": {
-                    bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
-                    color: "primary.main",
-                  },
+                  borderColor: "divider",
+                  color: "text.secondary",
+                  "&:hover": { borderColor: "error.light", bgcolor: alpha("#f44336", 0.05), color: "error.main" }
                 }}
               >
-                <Typography variant="caption" sx={{ fontWeight: 500 }}>
-                  Updated: {new Date(userLocation.lastUpdated).toLocaleTimeString()} • Refresh
-                </Typography>
+                Clear Location & Stop Sorting
               </Button>
-            </Box>
-          </Grid>
-        )}
-      </Grid>
+            </Stack>
+          ) : (
+            <Stack alignItems="center" spacing={1.5} sx={{ py: 1 }}>
+              <GpsOffIcon sx={{ color: "text.disabled", fontSize: 40 }} />
+              <Typography variant="body2" sx={{ color: "text.secondary", textAlign: "center" }}>
+                Location sorting is currently disabled.
+              </Typography>
+              <Button
+                variant="contained"
+                startIcon={<GpsFixedIcon />}
+                onClick={refreshLocation}
+                sx={{
+                  borderRadius: "12px",
+                  textTransform: "none",
+                  fontWeight: "bold",
+                  px: 4,
+                  boxShadow: 0,
+                }}
+              >
+                Enable Nearby Features
+              </Button>
+            </Stack>
+          )}
+        </Paper>
+      </Stack>
     </Box>
   );
 };

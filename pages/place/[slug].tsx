@@ -69,67 +69,77 @@ const PlacePage: React.FC<PlacePageProps> = ({ slug, place, videos, host }) => {
       </Head>
       <ResponsiveDrawer />
       
-      <Container maxWidth="md" sx={{ mt: { xs: 2, sm: 4 }, mb: 4, px: { xs: 1, sm: 2 } }}>
+      <Container maxWidth="md" sx={{ mt: { xs: 2, sm: 4 }, mb: 4, px: { xs: 2, sm: 2 } }}>
         <Button 
           startIcon={<ArrowBackIcon />} 
           onClick={() => router.push("/")}
-          sx={{ mb: { xs: 1, sm: 3 }, textTransform: "none", color: "text.secondary" }}
+          sx={{ mb: { xs: 2, sm: 3 }, textTransform: "none", color: "text.secondary", fontWeight: 600 }}
         >
-          Back to list
+          Back to home
         </Button>
 
-        <Paper elevation={0} sx={{ p: { xs: 2, sm: 4 }, borderRadius: { xs: "12px", sm: "16px" }, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
-          <Grid container spacing={{ xs: 2, sm: 4 }}>
+        <Paper 
+          elevation={0} 
+          sx={{ 
+            p: { xs: 2, sm: 4 }, 
+            borderRadius: "24px", 
+            border: "1px solid", 
+            borderColor: "divider", 
+            bgcolor: "background.paper",
+            overflow: "hidden"
+          }}
+        >
+          <Grid container spacing={{ xs: 3, sm: 4 }}>
             <Grid item xs={12}>
-              <Box sx={{ textAlign: "center", mb: 1 }}>
+              <Box sx={{ textAlign: "left", mb: 1 }}>
                 <Typography 
-                  variant="h4" 
+                  variant="h3" 
                   component="h1" 
-                  fontWeight="bold" 
-                  gutterBottom 
+                  fontWeight="800" 
                   color="text.primary"
                   sx={{ 
-                    fontSize: { xs: "1.5rem", sm: "2.125rem" },
-                    lineHeight: 1.2
+                    fontSize: { xs: "2rem", sm: "2.5rem" },
+                    lineHeight: 1.1,
+                    letterSpacing: -1
                   }}
                 >
                   {place.name}
                 </Typography>
-                <Typography 
-                  variant="h6" 
-                  color="text.secondary" 
-                  sx={{ 
-                    fontStyle: "italic", 
-                    fontSize: { xs: "0.9rem", sm: "1.1rem" },
-                    px: { xs: 1, sm: 0 }
-                  }}
-                >
-                  {place.formatted_address}
-                </Typography>
               </Box>
-              <Divider sx={{ my: { xs: 2, sm: 3 } }} />
+              <Divider sx={{ mt: 3, mb: 1, borderStyle: "dashed" }} />
             </Grid>
 
             <Grid item xs={12}>
-              {/* Note: RestaurantInfo might need updates to handle PlaceInterface */}
               <RestaurantInfo data={place as any} />
             </Grid>
 
             <Grid item xs={12}>
               <Box sx={{ mt: 1 }}>
-                <Accordion elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: "12px !important", mb: 2, bgcolor: "background.paper" }}>
+                <Accordion 
+                  elevation={0} 
+                  sx={{ 
+                    border: "1px solid", 
+                    borderColor: "divider", 
+                    borderRadius: "16px !important", 
+                    mb: 4, 
+                    bgcolor: "action.hover",
+                    overflow: "hidden"
+                  }}
+                >
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Box display="flex" alignItems="center" gap={1}>
-                      <AccessTimeIcon color="action" />
-                      <Typography fontWeight="bold" sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}>Operating Hours</Typography>
+                    <Box display="flex" alignItems="center" gap={1.5}>
+                      <AccessTimeIcon sx={{ color: "primary.main" }} />
+                      <Typography fontWeight="bold">Operating Hours</Typography>
                     </Box>
                   </AccordionSummary>
-                  <AccordionDetails sx={{ bgcolor: "action.hover", borderRadius: "0 0 12px 12px" }}>
+                  <AccordionDetails sx={{ bgcolor: "background.paper", borderTop: "1px solid", borderColor: "divider" }}>
                     {place.opening_hours?.weekday_text && place.opening_hours.weekday_text.length > 0 ? (
-                      <Grid container spacing={1}>
+                      <Grid container spacing={1.5} sx={{ py: 1 }}>
                         {place.opening_hours.weekday_text.map((text, index) => (
                           <Grid item xs={12} key={index}>
-                            <Typography variant="body2" sx={{ fontSize: { xs: "0.85rem", sm: "0.875rem" } }}>{text}</Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 500, display: "flex", justifyContent: "space-between" }}>
+                              {text}
+                            </Typography>
                           </Grid>
                         ))}
                       </Grid>
@@ -139,80 +149,91 @@ const PlacePage: React.FC<PlacePageProps> = ({ slug, place, videos, host }) => {
                   </AccordionDetails>
                 </Accordion>
 
-                <Typography variant="h6" fontWeight="bold" gutterBottom sx={{ mt: 4, mb: 2, display: "flex", alignItems: "center", gap: 1 }}>
-                  <VideoLibraryIcon color="primary" />
-                  Featured in Videos
-                </Typography>
-                
-                {videos.map((video) => (
-                  <Box key={video.videoId} sx={{ mb: 6 }}>
-                    <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                      {video.videoTitle}
-                    </Typography>
-                    <Box
-                      sx={{
-                        position: "relative",
-                        paddingTop: "56.25%",
-                        width: "100%",
-                        borderRadius: "12px",
-                        overflow: "hidden",
-                        boxShadow: 2,
-                        bgcolor: "black",
-                        mb: 2
-                      }}
-                    >
-                      <ReactPlayer
-                        url={`https://www.youtube.com/watch?v=${video.videoId}`}
-                        width="100%"
-                        height="100%"
-                        style={{ position: "absolute", top: 0, left: 0 }}
-                        controls
-                      />
-                    </Box>
-
-                    {video.videoDescription && (
-                      <Accordion 
-                        elevation={0} 
-                        sx={{ 
-                          border: "1px solid", 
-                          borderColor: "divider", 
-                          borderRadius: "12px !important", 
-                          bgcolor: "background.paper",
-                          "&:before": { display: "none" }
+                <Box sx={{ mb: 4 }}>
+                  <Typography variant="h6" fontWeight="800" gutterBottom sx={{ mt: 6, mb: 3, display: "flex", alignItems: "center", gap: 1.5, letterSpacing: -0.5, fontSize: { xs: "1.25rem", sm: "1.5rem" } }}>
+                    <VideoLibraryIcon sx={{ color: "error.main", fontSize: "1.6rem" }} />
+                    Featured in Videos
+                  </Typography>
+                  
+                  {videos.map((video) => (
+                    <Box key={video.videoId} sx={{ mb: 6 }}>
+                      <Box
+                        sx={{
+                          position: "relative",
+                          paddingTop: "56.25%",
+                          width: "100%",
+                          borderRadius: "20px",
+                          overflow: "hidden",
+                          boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
+                          bgcolor: "black",
+                          mb: 2.5,
+                          border: "1px solid",
+                          borderColor: "divider"
                         }}
                       >
-                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                          <Box display="flex" alignItems="center" gap={1}>
-                            <DescriptionIcon color="action" sx={{ fontSize: "1.1rem" }} />
-                            <Typography variant="body2" fontWeight="bold">Video Description</Typography>
-                          </Box>
-                        </AccordionSummary>
-                        <AccordionDetails sx={{ bgcolor: "action.hover", borderRadius: "0 0 12px 12px" }}>
-                          <Typography 
-                            variant="body2" 
-                            color="text.secondary" 
-                            sx={{ 
-                              whiteSpace: "pre-wrap", 
-                              fontSize: "0.85rem",
-                              lineHeight: 1.6
-                            }}
-                          >
-                            {video.videoDescription}
-                          </Typography>
-                        </AccordionDetails>
-                      </Accordion>
-                    )}
-                  </Box>
-                ))}
+                        <ReactPlayer
+                          url={`https://www.youtube.com/watch?v=${video.videoId}`}
+                          width="100%"
+                          height="100%"
+                          style={{ position: "absolute", top: 0, left: 0 }}
+                          controls
+                        />
+                      </Box>
+
+                      {video.videoDescription && (
+                        <Accordion 
+                          elevation={0} 
+                          sx={{ 
+                            border: "1px solid", 
+                            borderColor: "divider", 
+                            borderRadius: "16px !important", 
+                            bgcolor: "action.hover",
+                            "&:before": { display: "none" }
+                          }}
+                        >
+                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <Box display="flex" alignItems="center" gap={1.5}>
+                              <DescriptionIcon color="action" sx={{ fontSize: "1.2rem" }} />
+                              <Typography variant="body2" fontWeight="bold">Video Description</Typography>
+                            </Box>
+                          </AccordionSummary>
+                          <AccordionDetails sx={{ bgcolor: "background.paper", borderTop: "1px solid", borderColor: "divider" }}>
+                            <Typography 
+                              variant="body2" 
+                              color="text.secondary" 
+                              sx={{ 
+                                whiteSpace: "pre-wrap", 
+                                fontSize: "0.9rem",
+                                lineHeight: 1.7
+                              }}
+                            >
+                              {video.videoDescription}
+                            </Typography>
+                          </AccordionDetails>
+                        </Accordion>
+                      )}
+                    </Box>
+                  ))}
+                </Box>
               </Box>
             </Grid>
 
             <Grid item xs={12}>
-              <Box sx={{ mt: { xs: 3, sm: 6 } }}>
-                <Typography variant="h6" fontWeight="bold" gutterBottom sx={{ px: 1, color: "text.primary", fontSize: { xs: "1.1rem", sm: "1.25rem" } }}>
+              <Box sx={{ mt: { xs: 2, sm: 4 } }}>
+                <Typography variant="h5" fontWeight="800" gutterBottom sx={{ mb: 3, letterSpacing: -0.5 }}>
                   Comments & Discussion
                 </Typography>
-                <Paper elevation={0} sx={{ p: { xs: 1, sm: 2 }, borderRadius: "12px", border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
+                <Paper 
+                  elevation={0} 
+                  sx={{ 
+                    p: { xs: 2, sm: 3 }, 
+                    borderRadius: "20px", 
+                    border: "1px solid", 
+                    borderColor: "divider", 
+                    bgcolor: "background.paper",
+                    boxShadow: "0 4px 20px rgba(0,0,0,0.05)"
+                  }}
+                >
                   <DiscussionEmbed
                     key={theme.palette.mode}
                     shortname={process.env.NEXT_PUBLIC_DISQUS_SHORTNAME || "disqus-shortname"}
