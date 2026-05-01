@@ -9,7 +9,7 @@ import {
   Box,
   Typography,
 } from "@mui/material";
-import MyLocationIcon from "@mui/icons-material/MyLocation";
+import { MyLocation as MyLocationIcon } from "@mui/icons-material";
 import { alpha } from "@mui/material/styles";
 
 interface LocationPromptProps {

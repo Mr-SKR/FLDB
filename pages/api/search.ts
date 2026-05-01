@@ -13,8 +13,15 @@ export default async function handler(
 
   const { q, veg, page, limit } = req.query;
   const isVegOnly = veg === "true";
-  const pageNum = parseInt(page as string) || 1;
-  const limitNum = parseInt(limit as string) || 10;
+  
+  let pageNum = parseInt(page as string) || 1;
+  let limitNum = parseInt(limit as string) || 10;
+  
+  // Security: Bound parameters to prevent DoS
+  if (pageNum < 1) pageNum = 1;
+  if (limitNum < 1) limitNum = 10;
+  if (limitNum > 50) limitNum = 50;
+  
   const skip = (pageNum - 1) * limitNum;
 
   try {
@@ -23,25 +30,20 @@ export default async function handler(
     const fields = "_id place_id name slug geometry hasVeg thumbnail formatted_address rating url";
 
     if (q && typeof q === "string") {
-      const searchStage: any = {
-        $search: {
-          index: "default",
-          compound: {
-            must: [
-              {
-                text: {
-                  query: q,
-                  path: ["name", "formatted_address", "searchContent"],
-                  fuzzy: { maxEdits: 1, prefixLength: 2 },
-                },
-              },
-            ],
+      const must: Record<string, unknown>[] = [
+        {
+          text: {
+            query: q,
+            path: ["name", "formatted_address", "searchContent"],
+            fuzzy: { maxEdits: 1, prefixLength: 2 },
           },
         },
-      };
+      ];
+
+      const compound: Record<string, unknown> = { must };
 
       if (isVegOnly) {
-        searchStage.$search.compound.filter = [
+        compound.filter = [
           {
             equals: {
               value: true,
@@ -52,7 +54,12 @@ export default async function handler(
       }
 
       const results = await Place.aggregate([
-        searchStage,
+        {
+          $search: {
+            index: "default",
+            compound,
+          },
+        },
         { $skip: skip },
         { $limit: limitNum },
         {
@@ -75,7 +82,7 @@ export default async function handler(
       return res.status(200).json(serializeDocuments(results));
     } else {
       // General listing with optional veg filter
-      const filter: any = {};
+      const filter: Record<string, unknown> = {};
       if (isVegOnly) filter.hasVeg = true;
 
       const results = await Place.find(filter, fields)

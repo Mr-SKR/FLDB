@@ -30,7 +30,7 @@ export interface PlaceInterface {
   url?: string; // Google Maps URL
   opening_hours?: {
     open_now?: boolean;
-    periods?: any[];
+    periods?: unknown[];
     weekday_text?: string[];
   };
   business_status?: string;

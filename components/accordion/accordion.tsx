@@ -6,7 +6,7 @@ import {
   AccordionDetails,
   Typography,
 } from "@mui/material";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import { ExpandMore as ExpandMoreIcon } from "@mui/icons-material";
 import Linkify from "linkify-react";
 
 interface CustomAccordionProps {
@@ -17,7 +17,7 @@ interface CustomAccordionProps {
 
 export default function CustomAccordion(
   props: CustomAccordionProps
-): JSX.Element {
+): React.ReactElement {
   return (
     <Grid item xs={12}>
       <Accordion>

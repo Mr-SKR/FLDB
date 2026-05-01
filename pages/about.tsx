@@ -5,7 +5,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useRouter } from "next/router";
 
 import ResponsiveDrawer from "../components/headers/Header";
-import CustomAccordion from "../components/accordion/accordion";
+import CustomAccordion from "../components/accordion/Accordion";
 
 const faqs = [
   {
@@ -108,7 +108,7 @@ const faqs = [
   },
 ];
 
-function About(): JSX.Element {
+function About(): React.ReactElement {
   const router = useRouter();
 
   return (

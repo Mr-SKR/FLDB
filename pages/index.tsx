@@ -7,26 +7,22 @@ import {
   SwipeableDrawer,
   CircularProgress,
   IconButton,
+  Alert as MuiAlert,
+  AlertProps,
 } from "@mui/material";
-import MuiAlert, { AlertProps } from "@mui/material/Alert";
-import TuneIcon from "@mui/icons-material/Tune";
-import CloseIcon from "@mui/icons-material/Close";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import Brightness4Icon from "@mui/icons-material/Brightness4";
-import Brightness7Icon from "@mui/icons-material/Brightness7";
+import { Tune as TuneIcon, Close as CloseIcon } from "@mui/icons-material";
 import Head from "next/head";
-import { useRouter } from "next/router";
-import { useTheme } from "@mui/material/styles";
 
 import { useGeolocation } from "../hooks/useGeolocation";
 import { usePlaceFilters } from "../hooks/usePlaceFilters";
-import { getPlacesPaginated } from "../services/videoService";
-import FoodCard from "../components/cards/card";
+import { getPlacesPaginated } from "../services/placeService";
+import { FeedViewer } from "../components/ui/FeedViewer";
 import { FilterSection } from "../components/ui/FilterSection";
 import { PlaceInterface } from "../types/types";
 import ResponsiveDrawer from "../components/headers/Header";
 import { LoadingScreen } from "../components/ui/LoadingScreen";
 import { LocationPrompt } from "../components/ui/LocationPrompt";
+import { MobileControls } from "../components/ui/MobileControls";
 import { ColorModeContext } from "./_app";
 
 const Alert = forwardRef<HTMLDivElement, AlertProps>(function Alert(props, ref) {
@@ -40,9 +36,7 @@ interface HomeProps {
 const Home: React.FC<HomeProps> = ({ data }) => {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isLocationPromptOpen, setIsLocationPromptOpen] = useState(false);
-  const observerTarget = useRef(null);
-  const router = useRouter();
-  const theme = useTheme();
+  const observerTarget = useRef<HTMLDivElement>(null);
   const colorMode = useContext(ColorModeContext);
 
   const {
@@ -110,7 +104,7 @@ const Home: React.FC<HomeProps> = ({ data }) => {
     sessionStorage.setItem("skipLocationPrompt", "true");
   };
 
-  const handleObserver = useCallback((entries) => {
+  const handleObserver = useCallback((entries: IntersectionObserverEntry[]) => {
     const [entry] = entries;
     if (entry.isIntersecting && hasMore) {
       loadMore();
@@ -163,43 +157,8 @@ const Home: React.FC<HomeProps> = ({ data }) => {
         <ResponsiveDrawer />
       </Box>
 
-      {/* Mobile Theme Toggle */}
-      <IconButton
-        onClick={colorMode.toggleColorMode}
-        sx={{
-          position: "fixed",
-          top: 16,
-          left: 16,
-          zIndex: 110,
-          bgcolor: "rgba(0,0,0,0.3)",
-          color: theme.palette.mode === "light" ? "#f1c40f" : "#bd93f9",
-          backdropFilter: "blur(8px)",
-          "&:hover": { bgcolor: "rgba(0,0,0,0.5)" },
-          display: { xs: "flex", sm: "none" },
-          boxShadow: "0 2px 8px rgba(0,0,0,0.5)",
-        }}
-      >
-        {theme.palette.mode === "light" ? <Brightness7Icon /> : <Brightness4Icon />}
-      </IconButton>
-
-      {/* Mobile Info Button */}
-      <IconButton
-        onClick={() => router.push("/about")}
-        sx={{
-          position: "fixed",
-          top: 16,
-          right: 16,
-          zIndex: 110,
-          bgcolor: "rgba(0,0,0,0.3)",
-          color: "white",
-          backdropFilter: "blur(8px)",
-          "&:hover": { bgcolor: "rgba(0,0,0,0.5)" },
-          display: { xs: "flex", sm: "none" },
-          boxShadow: "0 2px 8px rgba(0,0,0,0.5)",
-        }}
-      >
-        <InfoOutlinedIcon />
-      </IconButton>
+      {/* Mobile Controls */}
+      <MobileControls onToggleColorMode={colorMode.toggleColorMode} />
 
       <Snackbar open={!!geoError} autoHideDuration={6000} sx={{ mb: 8 }}>
         <Alert severity="error" sx={{ width: "100%" }}>
@@ -229,67 +188,15 @@ const Home: React.FC<HomeProps> = ({ data }) => {
             flexDirection: "column",
           }}
         >
-          {/* Centered Feed */}
-          <Box 
-            sx={{ 
-              width: "100%",
-              height: "100%",
-              bgcolor: "black",
-              position: "relative",
-              overflowY: "scroll",
-              scrollSnapType: "y mandatory",
-              "&::-webkit-scrollbar": { display: "none" },
-              msOverflowStyle: "none",
-              scrollbarWidth: "none",
-              boxShadow: { sm: "0 0 40px rgba(0,0,0,0.8)" },
-              borderLeft: { sm: "1px solid #333" },
-              borderRight: { sm: "1px solid #333" },
-            }}
-          >
-            {filteredPlaces.length > 0 ? (
-              filteredPlaces.map((place, index) => (
-                <FoodCard
-                  key={place._id}
-                  slug={place.slug}
-                  title={place.name}
-                  address={place.formatted_address || ""}
-                  displacement={place.displacement || 0}
-                  hasVeg={place.hasVeg || false}
-                  height="100%"
-                  thumbnail={place.thumbnail?.large || place.thumbnail?.small || ""}
-                  useLocation={!!userLocation}
-                  setUseLocation={refreshLocation}
-                  index={index}
-                  rating={place.rating}
-                  url={place.url}
-                />
-              ))
-            ) : !isSearching && (
-              <Box sx={{ 
-                height: "100%", 
-                display: "flex", 
-                flexDirection: "column", 
-                justifyContent: "center", 
-                alignItems: "center",
-                color: "white",
-                p: 4,
-                textAlign: "center"
-              }}>
-                <Typography variant="h6" gutterBottom>No restaurants found</Typography>
-                <Typography variant="body2" sx={{ opacity: 0.7 }}>Try adjusting your filters</Typography>
-              </Box>
-            )}
-
-            {/* Infinite Scroll Sentinel */}
-            <Box ref={observerTarget} sx={{ height: "10px", width: "100%" }} />
-
-            {/* Loading Indicator (Inside Feed) */}
-            {isLoadingMore && (
-              <Box sx={{ py: 4, display: "flex", justifyContent: "center" }}>
-                <CircularProgress size={24} sx={{ color: "white" }} />
-              </Box>
-            )}
-          </Box>
+          {/* Feed Content */}
+          <FeedViewer
+            filteredPlaces={filteredPlaces}
+            userLocation={userLocation}
+            refreshLocation={refreshLocation}
+            isLoadingMore={isLoadingMore}
+            isSearching={isSearching}
+            observerTarget={observerTarget}
+          />
 
           {/* Filter FAB - Now anchored to the feed wrapper */}
           {!isFilterOpen && (

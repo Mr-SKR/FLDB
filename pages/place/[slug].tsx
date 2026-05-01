@@ -12,19 +12,22 @@ import {
   Divider,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import AccessTimeIcon from "@mui/icons-material/AccessTime";
-import VideoLibraryIcon from "@mui/icons-material/VideoLibrary";
-import DescriptionIcon from "@mui/icons-material/Description";
+import {
+  ExpandMore as ExpandMoreIcon,
+  ArrowBack as ArrowBackIcon,
+  AccessTime as AccessTimeIcon,
+  VideoLibrary as VideoLibraryIcon,
+  Description as DescriptionIcon,
+} from "@mui/icons-material";
 import { useRouter } from "next/router";
 import ReactPlayer from "react-player";
 import { DiscussionEmbed } from "disqus-react";
 import Head from "next/head";
+import { GetStaticPropsContext } from "next";
 
 import ResponsiveDrawer from "../../components/headers/Header";
 import { PlaceInterface, VideoInterface } from "../../types/types";
-import { getAllPlaceSlugs, getPlaceBySlug, getVideosForPlace } from "../../services/videoService";
+import { getAllPlaceSlugs, getPlaceBySlug, getVideosForPlace } from "../../services/placeService";
 import { RestaurantInfo } from "../../components/ui/RestaurantInfo";
 
 interface PlacePageProps {
@@ -34,7 +37,7 @@ interface PlacePageProps {
   host: string;
 }
 
-const PlacePage: React.FC<PlacePageProps> = ({ slug, place, videos, host }) => {
+const PlacePage: React.FC<PlacePageProps> = ({ place, videos, host }) => {
   const router = useRouter();
   const theme = useTheme();
 
@@ -110,7 +113,7 @@ const PlacePage: React.FC<PlacePageProps> = ({ slug, place, videos, host }) => {
             </Grid>
 
             <Grid item xs={12}>
-              <RestaurantInfo data={place as any} />
+              <RestaurantInfo data={place} />
             </Grid>
 
             <Grid item xs={12}>
@@ -261,8 +264,8 @@ export const getStaticPaths = async () => {
   };
 };
 
-export const getStaticProps = async (context: any) => {
-  const { slug } = context.params;
+export const getStaticProps = async (context: GetStaticPropsContext) => {
+  const { slug } = context.params!;
   const place = await getPlaceBySlug(slug as string);
 
   if (!place) {

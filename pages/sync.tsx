@@ -11,18 +11,17 @@ import {
   Divider,
   List,
   ListItem,
-  ListItemText,
-  ListItemAvatar,
   Avatar,
   Chip,
-  Tooltip,
   LinearProgress,
   Grid,
 } from "@mui/material";
-import SyncIcon from "@mui/icons-material/Sync";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
-import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import {
+  Sync as SyncIcon,
+  CheckCircle as CheckCircleIcon,
+  CloudDownload as CloudDownloadIcon,
+  PlayArrow as PlayArrowIcon,
+} from "@mui/icons-material";
 import ResponsiveDrawer from "../components/headers/Header";
 import Head from "next/head";
 
@@ -52,14 +51,18 @@ const SyncPage = () => {
     setLoadingList(true);
     setGlobalError("");
     try {
-      const url = `/api/sync?secret=${encodeURIComponent(secret)}&action=list${token ? `&pageToken=${token}` : ""}`;
-      const res = await fetch(url);
+      const url = `/api/sync?action=list${token ? `&pageToken=${token}` : ""}`;
+      const res = await fetch(url, {
+        headers: {
+          "Authorization": `Bearer ${secret}`
+        }
+      });
       if (!res.ok) throw new Error("Failed to fetch list");
       const data = await res.json();
-      setVideos(data.videos.map((v: any) => ({ ...v, syncStatus: "idle" })));
+      setVideos(data.videos.map((v: VideoItem) => ({ ...v, syncStatus: "idle" })));
       setNextPageToken(data.nextPageToken);
-    } catch (err: any) {
-      setGlobalError(err.message);
+    } catch (err: unknown) {
+      setGlobalError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setLoadingList(false);
     }
@@ -70,7 +73,12 @@ const SyncPage = () => {
     
     try {
       const res = await fetch(
-        `/api/sync?secret=${encodeURIComponent(secret)}&action=sync&videoId=${videoId}&mode=${mode}&isVeg=${isVeg}`
+        `/api/sync?action=sync&videoId=${videoId}&mode=${mode}&isVeg=${isVeg}`,
+        {
+          headers: {
+            "Authorization": `Bearer ${secret}`
+          }
+        }
       );
       const data = await res.json();
 
@@ -82,9 +90,13 @@ const SyncPage = () => {
       } else {
         throw new Error(data.message || "Sync failed");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setVideos(prev => prev.map(v => 
-        v.videoId === videoId ? { ...v, syncStatus: "error", error: err.message } : v
+        v.videoId === videoId ? { 
+          ...v, 
+          syncStatus: "error", 
+          error: err instanceof Error ? err.message : "Sync failed" 
+        } : v
       ));
       return false;
     }

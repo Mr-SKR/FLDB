@@ -1,9 +1,6 @@
 import React from "react";
 import {
-  Grid,
   TextField,
-  FormControlLabel,
-  Switch,
   IconButton,
   Box,
   Typography,
@@ -13,13 +10,14 @@ import {
   Stack,
   Divider,
 } from "@mui/material";
-import RotateLeftIcon from "@mui/icons-material/RotateLeft";
-import SearchIcon from "@mui/icons-material/Search";
-import ClearIcon from "@mui/icons-material/Clear";
-import RestaurantIcon from "@mui/icons-material/Restaurant";
-import MyLocationIcon from "@mui/icons-material/MyLocation";
-import GpsFixedIcon from "@mui/icons-material/GpsFixed";
-import GpsOffIcon from "@mui/icons-material/GpsOff";
+import {
+  RotateLeft as RotateLeftIcon,
+  Search as SearchIcon,
+  Clear as ClearIcon,
+  Restaurant as RestaurantIcon,
+  GpsFixed as GpsFixedIcon,
+  GpsOff as GpsOffIcon,
+} from "@mui/icons-material";
 import { UserLocation } from "../../hooks/useGeolocation";
 import { alpha, keyframes } from "@mui/material/styles";
 

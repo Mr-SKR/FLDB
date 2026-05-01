@@ -19,32 +19,8 @@ interface RestaurantInfoProps {
 }
 
 export const RestaurantInfo: React.FC<RestaurantInfoProps> = ({ data }) => {
-  const ratingValue = data.rating ? (
-    <Link
-      href={`https://search.google.com/local/reviews?placeid=${data.place_id}`}
-      target="_blank"
-      rel="noopener noreferrer"
-      sx={{ fontWeight: "bold", textDecoration: "none", color: "primary.main" }}
-    >
-      <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
-        {data.rating} / 5 (Google Reviews)
-      </Box>
-      <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>
-        {data.rating} / 5
-      </Box>
-    </Link>
-  ) : "N/A";
-
-  const contactValue = data.international_phone_number ? (
-    <Link href={`tel:${data.international_phone_number}`} sx={{ textDecoration: "none", color: "text.primary", fontWeight: 600 }}>
-      <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
-        {data.international_phone_number}
-      </Box>
-      <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>
-        Call Now
-      </Box>
-    </Link>
-  ) : "N/A";
+  const ratingLink = data.rating ? `https://search.google.com/local/reviews?placeid=${data.place_id}` : null;
+  const contactLink = data.international_phone_number ? `tel:${data.international_phone_number}` : null;
 
   return (
     <Stack spacing={2}>
@@ -120,6 +96,13 @@ export const RestaurantInfo: React.FC<RestaurantInfoProps> = ({ data }) => {
       >
         {/* Rating Card */}
         <Paper
+          component={ratingLink ? Link : "div"}
+          {...(ratingLink ? { 
+            href: ratingLink, 
+            target: "_blank", 
+            rel: "noopener noreferrer",
+            underline: "none"
+          } : {})}
           elevation={0}
           sx={{
             p: { xs: 2, sm: 2 },
@@ -133,7 +116,16 @@ export const RestaurantInfo: React.FC<RestaurantInfoProps> = ({ data }) => {
             flex: 1,
             border: "1px solid",
             borderColor: "divider",
-            textAlign: "center"
+            textAlign: "center",
+            cursor: ratingLink ? "pointer" : "default",
+            transition: "all 0.2s",
+            "&:hover": ratingLink ? {
+              bgcolor: "action.selected",
+              transform: "translateY(-2px)",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.05)"
+            } : {},
+            color: "inherit",
+            textDecoration: "none"
           }}
         >
           <GradeIcon color="warning" sx={{ fontSize: "1.5rem" }} />
@@ -149,14 +141,28 @@ export const RestaurantInfo: React.FC<RestaurantInfoProps> = ({ data }) => {
             >
               Rating
             </Typography>
-            <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              {ratingValue}
+            <Typography variant="body2" sx={{ fontWeight: 600, color: "primary.main" }}>
+              {data.rating ? (
+                <>
+                  <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+                    {data.rating} / 5 (Reviews)
+                  </Box>
+                  <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>
+                    {data.rating} / 5
+                  </Box>
+                </>
+              ) : "N/A"}
             </Typography>
           </Box>
         </Paper>
 
         {/* Contact Card */}
         <Paper
+          component={contactLink ? Link : "div"}
+          {...(contactLink ? { 
+            href: contactLink,
+            underline: "none"
+          } : {})}
           elevation={0}
           sx={{
             p: { xs: 2, sm: 2 },
@@ -170,7 +176,16 @@ export const RestaurantInfo: React.FC<RestaurantInfoProps> = ({ data }) => {
             flex: 1,
             border: "1px solid",
             borderColor: "divider",
-            textAlign: "center"
+            textAlign: "center",
+            cursor: contactLink ? "pointer" : "default",
+            transition: "all 0.2s",
+            "&:hover": contactLink ? {
+              bgcolor: "action.selected",
+              transform: "translateY(-2px)",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.05)"
+            } : {},
+            color: "inherit",
+            textDecoration: "none"
           }}
         >
           <PhoneIcon color="primary" sx={{ fontSize: "1.5rem" }} />
@@ -186,8 +201,17 @@ export const RestaurantInfo: React.FC<RestaurantInfoProps> = ({ data }) => {
             >
               Contact
             </Typography>
-            <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              {contactValue}
+            <Typography variant="body2" sx={{ fontWeight: 600, color: "text.primary" }}>
+              {data.international_phone_number ? (
+                <>
+                  <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+                    {data.international_phone_number}
+                  </Box>
+                  <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>
+                    Call Now
+                  </Box>
+                </>
+              ) : "N/A"}
             </Typography>
           </Box>
         </Paper>

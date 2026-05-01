@@ -9,9 +9,11 @@ import {
 } from "@mui/material";
 import Image from "next/image";
 import { useRouter } from "next/router";
-import RestaurantIcon from "@mui/icons-material/Restaurant";
-import LocationOnIcon from "@mui/icons-material/LocationOn";
-import DirectionsIcon from "@mui/icons-material/Directions";
+import {
+  Restaurant as RestaurantIcon,
+  LocationOn as LocationOnIcon,
+  Directions as DirectionsIcon,
+} from "@mui/icons-material";
 
 interface FoodCardProps {
   slug: string;
@@ -23,12 +25,12 @@ interface FoodCardProps {
   hasVeg: boolean;
   useLocation: boolean;
   index: number;
-  setUseLocation: React.Dispatch<React.SetStateAction<boolean>>;
+  setUseLocation: (force?: boolean) => Promise<boolean>;
   rating?: number | string;
   url?: string;
 }
 
-export default function FoodCard(props: FoodCardProps): JSX.Element {
+export default function FoodCard(props: FoodCardProps): React.ReactElement {
   const router = useRouter();
   const ratingValue = typeof props.rating === "string" ? parseFloat(props.rating) : props.rating;
 
@@ -62,8 +64,8 @@ export default function FoodCard(props: FoodCardProps): JSX.Element {
         <Image
           src={props.thumbnail}
           alt={props.title}
-          layout="fill"
-          objectFit="cover"
+          fill
+          style={{ objectFit: "cover" }}
           priority={props.index < 2}
         />
         {/* Dark Gradient Overlay */}

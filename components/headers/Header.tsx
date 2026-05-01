@@ -1,12 +1,10 @@
 import * as React from "react";
-import AppBar from "@mui/material/AppBar";
-import Box from "@mui/material/Box";
-import Toolbar from "@mui/material/Toolbar";
-import Typography from "@mui/material/Typography";
-import IconButton from "@mui/material/IconButton";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import Brightness4Icon from "@mui/icons-material/Brightness4";
-import Brightness7Icon from "@mui/icons-material/Brightness7";
+import { AppBar, Box, Toolbar, Typography, IconButton } from "@mui/material";
+import {
+  InfoOutlined as InfoOutlinedIcon,
+  Brightness4 as Brightness4Icon,
+  Brightness7 as Brightness7Icon,
+} from "@mui/icons-material";
 import { useRouter } from "next/router";
 import { useTheme } from "@mui/material/styles";
 import { ColorModeContext } from "../../pages/_app";

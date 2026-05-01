@@ -6,7 +6,7 @@ import { syncConfig } from "../config/syncConfig";
 import { fetchLocationDetails } from "../lib/locationDetails";
 import { slugify } from "../utils/slugify";
 
-const youtube = google.youtube("v3");
+const youtube: youtube_v3.Youtube = google.youtube("v3");
 
 /**
  * Cleans video description by removing URLs and extra noise for search indexing.
@@ -55,15 +55,16 @@ export const getPlaylistVideos = async (pageToken?: string) => {
       console.log(`--- [Sync] Fetching items for veg playlist: ${playlistId}`);
       let vPageToken: string | undefined = undefined;
       do {
-        const playlistResponse: any = await youtube.playlistItems.list({
+        const vegPlaylistResponse = (await youtube.playlistItems.list({
           key: youtubeKey,
           part: ["snippet"],
           playlistId: playlistId,
           maxResults: 50,
           pageToken: vPageToken,
-        });
-        videosInVegPlaylists = videosInVegPlaylists.concat(playlistResponse.data.items || []);
-        vPageToken = playlistResponse.data.nextPageToken || undefined;
+        })) as unknown as { data: youtube_v3.Schema$PlaylistItemListResponse };
+        
+        videosInVegPlaylists = videosInVegPlaylists.concat(vegPlaylistResponse.data.items || []);
+        vPageToken = vegPlaylistResponse.data.nextPageToken || undefined;
       } while (vPageToken);
     }
   } catch (err) {
@@ -76,16 +77,17 @@ export const getPlaylistVideos = async (pageToken?: string) => {
     // Fetch Main Playlists - Paginated (assuming 1 main playlist for simplicity of pagination)
     for (const playlistId of syncConfig.playlistIds) {
       console.log(`--- [Sync] Fetching items for main playlist: ${playlistId}`);
-      const playlistResponse: any = await youtube.playlistItems.list({
+      const mainPlaylistResponse = (await youtube.playlistItems.list({
         key: youtubeKey,
         part: ["snippet"],
         playlistId: playlistId,
         maxResults: 50,
         pageToken: pageToken,
-      });
-      videosInPlayLists = videosInPlayLists.concat(playlistResponse.data.items || []);
-      nextPageToken = playlistResponse.data.nextPageToken || undefined;
-      console.log(`+++ [Sync] Retrieved ${playlistResponse.data.items?.length || 0} items. Next Token: ${nextPageToken}`);
+      })) as unknown as { data: youtube_v3.Schema$PlaylistItemListResponse };
+
+      videosInPlayLists = videosInPlayLists.concat(mainPlaylistResponse.data.items || []);
+      nextPageToken = mainPlaylistResponse.data.nextPageToken || undefined;
+      console.log(`+++ [Sync] Retrieved ${mainPlaylistResponse.data.items?.length || 0} items. Next Token: ${nextPageToken}`);
     }
   } catch (err) {
     console.error("!!! [Sync] Error fetching main playlists:", err);
@@ -164,7 +166,7 @@ export const syncSingleVideo = async (videoId: string, mode: "soft" | "hard" = "
       }
 
       console.log(`[${videoId}] Processing location: ${loc.name} (${loc.place_id})`);
-      const slug = slugify(loc.name);
+      const slug = slugify(loc.name || "");
       const placeData = {
         place_id: loc.place_id,
         name: loc.name,
@@ -204,8 +206,8 @@ export const syncSingleVideo = async (videoId: string, mode: "soft" | "hard" = "
 
     console.log(`[${videoId}] SYNC COMPLETE. Success.`);
     return { status: "success", locationsFound: locations.length };
-  } catch (error: any) {
-    console.error(`[${videoId}] SYNC FAILED:`, error.message);
+  } catch (error: unknown) {
+    console.error(`[${videoId}] SYNC FAILED:`, error instanceof Error ? error.message : error);
     throw error;
   }
 };

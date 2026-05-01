@@ -52,7 +52,9 @@ export const useGeolocation = () => {
       try {
         const parsed = JSON.parse(savedLocation);
         if (parsed.lat && parsed.long) {
-          setUserLocation(parsed);
+          queueMicrotask(() => {
+            setUserLocation(parsed);
+          });
         }
       } catch (e) {
         console.error("Failed to parse saved location", e);

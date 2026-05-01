@@ -1,6 +1,6 @@
 import type { NextApiResponse } from "next";
 
-import { getAllPlaceSlugs } from "../services/videoService";
+import { getAllPlaceSlugs } from "../services/placeService";
 
 const Sitemap = () => {
   return null;

@@ -6,48 +6,43 @@ import { UserLocation } from "./useGeolocation";
 const PAGE_SIZE = 10;
 
 export const usePlaceFilters = (initialData: PlaceInterface[], userLocation: UserLocation | null) => {
-  const [searchValue, setSearchValue] = useState(() => {
-    if (typeof window !== "undefined") {
-      return sessionStorage.getItem("searchValue") || "";
-    }
-    return "";
-  });
-  
-  const [hasVeg, setHasVeg] = useState(() => {
-    if (typeof window !== "undefined") {
-      const savedVeg = sessionStorage.getItem("vegToggleOn");
-      return savedVeg ? JSON.parse(savedVeg) : false;
-    }
-    return false;
-  });
-
+  const [searchValue, setSearchValue] = useState("");
+  const [hasVeg, setHasVeg] = useState(false);
   const [places, setPlaces] = useState<PlaceInterface[]>(initialData);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  
-  // Initialize to true if we have filters to re-hydrate
-  const [isInitialLoading, setIsInitialLoading] = useState(() => {
-    if (typeof window !== "undefined") {
-      const savedSearch = sessionStorage.getItem("searchValue") || "";
-      const savedVeg = sessionStorage.getItem("vegToggleOn");
-      const hasVegVal = savedVeg ? JSON.parse(savedVeg) : false;
-      return !!(savedSearch || hasVegVal);
-    }
-    return false;
-  });
+  const [isInitialLoading, setIsInitialLoading] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
 
   const isFirstRender = useRef(true);
 
+  // Initialize from sessionStorage on mount
+  useEffect(() => {
+    const savedSearch = sessionStorage.getItem("searchValue") || "";
+    const savedVeg = sessionStorage.getItem("vegToggleOn");
+    const hasVegVal = savedVeg ? JSON.parse(savedVeg) : false;
+
+    queueMicrotask(() => {
+      if (savedSearch) setSearchValue(savedSearch);
+      if (hasVegVal) setHasVeg(hasVegVal);
+      setIsHydrated(true);
+    });
+  }, []);
+
   // Sync filters to sessionStorage
   useEffect(() => {
-    sessionStorage.setItem("searchValue", searchValue);
-  }, [searchValue]);
+    if (isHydrated) {
+      sessionStorage.setItem("searchValue", searchValue);
+    }
+  }, [searchValue, isHydrated]);
 
   useEffect(() => {
-    sessionStorage.setItem("vegToggleOn", JSON.stringify(hasVeg));
-  }, [hasVeg]);
+    if (isHydrated) {
+      sessionStorage.setItem("vegToggleOn", JSON.stringify(hasVeg));
+    }
+  }, [hasVeg, isHydrated]);
 
   const fetchPlaces = useCallback(async (pageNum: number, search: string, veg: boolean, append: boolean = false) => {
     // Determine loading state
@@ -83,14 +78,18 @@ export const usePlaceFilters = (initialData: PlaceInterface[], userLocation: Use
 
   // Debounced search/filter trigger
   useEffect(() => {
+    if (!isHydrated) return;
+
     if (isFirstRender.current) {
       if (!searchValue && !hasVeg) {
         isFirstRender.current = false;
         return;
       }
       
-      // If we ARE in first render and HAVE filters, fetch immediately (no debounce)
-      fetchPlaces(1, searchValue, hasVeg, false);
+      // If we HAVE filters on hydration, fetch immediately
+      queueMicrotask(() => {
+        fetchPlaces(1, searchValue, hasVeg, false);
+      });
       return;
     }
 
@@ -100,7 +99,7 @@ export const usePlaceFilters = (initialData: PlaceInterface[], userLocation: Use
     }, 500);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [searchValue, hasVeg, fetchPlaces]);
+  }, [searchValue, hasVeg, fetchPlaces, isHydrated]);
 
   const loadMore = useCallback(() => {
     if (!hasMore || isLoadingMore || isSearching || isInitialLoading) return;

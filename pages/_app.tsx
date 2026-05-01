@@ -21,12 +21,17 @@ function MyApp({ Component, pageProps }: AppProps) {
   // Persist theme choice in localStorage
   useEffect(() => {
     const savedMode = localStorage.getItem("colorMode") as PaletteMode;
-    if (savedMode) {
-      setMode(savedMode);
-    } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-      setMode("dark");
+    const systemMode = window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+    const modeToSet = savedMode || systemMode;
+
+    if (modeToSet !== mode) {
+      queueMicrotask(() => {
+        setMode(modeToSet);
+      });
     }
-  }, []);
+  }, [mode]);
 
   // Router loading state
   useEffect(() => {

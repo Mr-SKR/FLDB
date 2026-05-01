@@ -1,6 +1,6 @@
 import getUrls from "get-urls";
 import tracer from "trace-redirect";
-import { Client } from "@googlemaps/google-maps-services-js";
+import { Client, PlaceData, PlaceInputType, PlaceDetailsRequest } from "@googlemaps/google-maps-services-js";
 import { syncConfig } from "../config/syncConfig";
 
 const googleMapsClient = new Client({});
@@ -15,7 +15,7 @@ const isValidUrl = (url: string) => {
 };
 
 export const fetchLocationDetails = async (description: string) => {
-  const allLocationDetails: any[] = [];
+  const allLocationDetails: Partial<PlaceData>[] = [];
   
   const googleMapsKey = process.env.GOOGLE_MAPS_API_KEY;
   if (!googleMapsKey) {
@@ -24,7 +24,7 @@ export const fetchLocationDetails = async (description: string) => {
   }
 
   const urls = Array.from(getUrls(String(description)));
-  const fields: any[] = [
+  const fields = [
     "business_status",
     "formatted_address",
     "name",
@@ -52,18 +52,19 @@ export const fetchLocationDetails = async (description: string) => {
         }
       }
 
-      if (Object.prototype.hasOwnProperty.call(syncConfig.replaceLinks, url)) {
-        url = (syncConfig.replaceLinks as any)[url];
+      const replaceLinks = syncConfig.replaceLinks as Record<string, string>;
+      if (Object.prototype.hasOwnProperty.call(replaceLinks, url)) {
+        url = replaceLinks[url];
       }
 
       // Check for various Google Maps link patterns
       if (/(maps|g\.page|g\.co|goo\.gl)/.test(url)) {
         try {
           console.log(`[Sync] Tracing URL: ${url}`);
-          let tracerResult = await tracer(url);
+          const tracerResult = await tracer(url);
           console.log(`[Sync] Resolved to: ${tracerResult}`);
           
-          let locationURLParams: any = null;
+          let locationURLParams: { ftid?: string; cid?: string } | null = null;
 
           // 1. Try to extract FTID (0x...:0x...)
           // Prefer FTID that follows !1s marker (primary feature ID)
@@ -83,7 +84,7 @@ export const fetchLocationDetails = async (description: string) => {
             }
           }
 
-          let resolvedPlace: any = null;
+          let resolvedPlace: Partial<PlaceData> | null = null;
 
           if (locationURLParams) {
             console.log(`[Sync] Calling Place Details with params:`, locationURLParams);
@@ -92,7 +93,7 @@ export const fetchLocationDetails = async (description: string) => {
                 ...locationURLParams,
                 fields,
                 key: googleMapsKey,
-              },
+              } as PlaceDetailsRequest["params"] & { ftid?: string; cid?: string },
             });
             
             const result = response.data.result;
@@ -112,7 +113,7 @@ export const fetchLocationDetails = async (description: string) => {
               const findResponse = await googleMapsClient.findPlaceFromText({
                 params: {
                   input: decodedName,
-                  inputtype: "textquery" as any,
+                  inputtype: PlaceInputType.textQuery,
                   fields: ["place_id"],
                   key: googleMapsKey,
                 }

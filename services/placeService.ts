@@ -53,8 +53,3 @@ export const getAllPlaceSlugs = async (): Promise<string[]> => {
   const response = await Place.find({}, "slug").lean();
   return response.map((ele) => ele.slug);
 };
-
-// Deprecated or updated to support transition
-export const getAllVideos = getAllPlaces; 
-export const getVideoById = getPlaceBySlug;
-export const getAllVideoIds = getAllPlaceSlugs;
