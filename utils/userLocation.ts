@@ -1,3 +1,5 @@
+import { logger } from "../lib/logger";
+
 const geoSettingsHigh = {
   enableHighAccuracy: true,
   timeout: 10000,
@@ -23,7 +25,7 @@ const getAccurateLocation = (): Promise<GeolocationPosition> => {
       resolve,
       (err) => {
         // If high accuracy fails or times out, try low accuracy fallback
-        console.warn(`High accuracy geolocation failed (${err.message}), falling back to low accuracy...`);
+        logger.warn(`High accuracy geolocation failed (${err.message}), falling back to low accuracy...`, "userLocation");
         navigator.geolocation.getCurrentPosition(resolve, reject, geoSettingsLow);
       },
       geoSettingsHigh

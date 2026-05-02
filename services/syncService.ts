@@ -10,14 +10,10 @@ import { slugify } from "../utils/slugify";
 import { env } from "../lib/env";
 import { logger } from "../lib/logger";
 import { PlaceInterface, VideoInterface } from "../types/types";
+import { sleep } from "../utils/sleep";
 
 const youtube: youtube_v3.Youtube = google.youtube("v3");
 const googleMapsClient = new Client({});
-
-/**
- * Helper to add a delay between API calls.
- */
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
  * Downloads a photo from Google Maps and encodes it to a Base64 data URL.
@@ -132,13 +128,13 @@ export const getPlaylistVideos = async (playlistId?: string, pageToken?: string)
       
       do {
         logger.debug(`Fetching items for playlist: ${id}`, "syncService");
-        const response = (await youtube.playlistItems.list({
+        const response = await youtube.playlistItems.list({
           key: youtubeKey,
           part: ["snippet"],
           playlistId: id,
           maxResults: 50,
           pageToken: currentToken,
-        })) as unknown as { data: youtube_v3.Schema$PlaylistItemListResponse };
+        });
 
         videosInPlayLists = videosInPlayLists.concat(response.data.items || []);
         currentToken = response.data.nextPageToken || undefined;

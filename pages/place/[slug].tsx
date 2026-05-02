@@ -256,9 +256,9 @@ const PlacePage: React.FC<PlacePageProps> = ({ place, videos, host }) => {
 };
 
 export const getStaticPaths = async () => {
-  const slugs = await getAllPlaceSlugs();
+  const places = await getAllPlaceSlugs();
   return {
-    paths: slugs.map((slug) => ({ params: { slug } })),
+    paths: places.map(({ slug }) => ({ params: { slug } })),
     fallback: true,
   };
 };

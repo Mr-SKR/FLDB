@@ -3,8 +3,7 @@ import { PlaceInterface } from "../types/types";
 import { getDisplacementFromLatLonInKm } from "../utils/getGeoDisplacement";
 import { UserLocation } from "./useGeolocation";
 import { logger } from "../lib/logger";
-
-const PAGE_SIZE = 10;
+import { PAGE_SIZE } from "../config/constants";
 
 export const usePlaceFilters = (initialData: PlaceInterface[], userLocation: UserLocation | null) => {
   const [searchValue, setSearchValue] = useState("");

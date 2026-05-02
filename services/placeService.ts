@@ -48,8 +48,11 @@ export const getVideosForPlace = async (videoIds: string[]): Promise<VideoInterf
   return serializeDocuments<VideoInterface>(videos);
 };
 
-export const getAllPlaceSlugs = async (): Promise<string[]> => {
+export const getAllPlaceSlugs = async (): Promise<{ slug: string; updatedAt: string }[]> => {
   await dbConnect();
-  const response = await Place.find({}, "slug").lean();
-  return response.map((ele) => ele.slug);
+  const response = await Place.find({}, "slug updatedAt").lean<PlaceInterface[]>();
+  return response.map((ele) => ({
+    slug: ele.slug,
+    updatedAt: ele.updatedAt ? new Date(ele.updatedAt).toISOString() : new Date().toISOString()
+  }));
 };

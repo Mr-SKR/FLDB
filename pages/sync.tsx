@@ -78,7 +78,7 @@ const SyncPage = () => {
         }
       }
     } catch (err) {
-      console.error("Failed to fetch sources", err);
+      logger.error("Failed to fetch sources", "SyncPage", err);
     }
   }, [secret]);
 

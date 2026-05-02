@@ -3,6 +3,7 @@ import dbConnect from "../../lib/dbConnect";
 import Place from "../../models/Place";
 import { serializeDocuments } from "../../utils/serialize";
 import { logger } from "../../lib/logger";
+import { PAGE_SIZE } from "../../config/constants";
 
 export default async function handler(
   req: NextApiRequest,
@@ -16,13 +17,13 @@ export default async function handler(
   const isVegOnly = veg === "true";
   
   let pageNum = parseInt(page as string) || 1;
-  let limitNum = parseInt(limit as string) || 10;
+  let limitNum = parseInt(limit as string) || PAGE_SIZE;
   const latNum = lat ? parseFloat(lat as string) : null;
   const lngNum = lng ? parseFloat(lng as string) : null;
   
   // Security: Bound parameters to prevent DoS
   if (pageNum < 1) pageNum = 1;
-  if (limitNum < 1) limitNum = 10;
+  if (limitNum < 1) limitNum = PAGE_SIZE;
   if (limitNum > 50) limitNum = 50;
   
   const skip = (pageNum - 1) * limitNum;

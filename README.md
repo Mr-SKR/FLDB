@@ -71,9 +71,8 @@ SYNC_SECRET=your_custom_secure_string_for_api_trigger
 The database is populated by a multi-step synchronization process that interfaces with the YouTube Data API and Google Places API. The system supports multiple channels and playlists as defined in `config/syncConfig.ts`.
 
 ### 🛡️ Authorization
-All sync requests must be authorized using the `SYNC_SECRET` defined in your environment variables. You can provide this in two ways:
+All sync requests must be authorized using the `SYNC_SECRET` defined in your environment variables. For security, authorization is strictly handled via headers to avoid leaking secrets in server logs or browser history.
 - **Header:** `Authorization: Bearer YOUR_SYNC_SECRET`
-- **Query Parameter:** `?secret=YOUR_SYNC_SECRET`
 
 ### 🛠️ API Actions
 
@@ -82,13 +81,13 @@ The `/api/sync` endpoint supports the following actions:
 #### 1. Get Sources
 Retrieve the list of configured channels and playlists.
 ```bash
-curl "http://localhost:3000/api/sync?action=get-sources&secret=YOUR_SECRET"
+curl -H "Authorization: Bearer YOUR_SECRET" "http://localhost:3000/api/sync?action=get-sources"
 ```
 
 #### 2. List Videos
 Fetch a paginated list of videos from a specific YouTube playlist.
 ```bash
-curl "http://localhost:3000/api/sync?action=list&playlistId=PLAYLIST_ID&secret=YOUR_SECRET"
+curl -H "Authorization: Bearer YOUR_SECRET" "http://localhost:3000/api/sync?action=list&playlistId=PLAYLIST_ID"
 ```
 
 #### 3. Sync Individual Video
@@ -97,7 +96,7 @@ Trigger a deep sync for a specific video. This extracts location data and enrich
 - `isVeg`: `true` or `false` (manual override for dietary filtering)
 
 ```bash
-curl -X POST "http://localhost:3000/api/sync?action=sync&videoId=VIDEO_ID&mode=soft&isVeg=true&secret=YOUR_SECRET"
+curl -X POST -H "Authorization: Bearer YOUR_SECRET" "http://localhost:3000/api/sync?action=sync&videoId=VIDEO_ID&mode=soft&isVeg=true"
 ```
 
 ## 🖥️ Sync Management Interface

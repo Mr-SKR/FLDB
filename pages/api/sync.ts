@@ -17,7 +17,7 @@ export default async function handler(
   const authHeader = req.headers.authorization;
   const syncSecret = env.SYNC_SECRET;
 
-  if (authHeader !== `Bearer ${syncSecret}` && req.query.secret !== syncSecret) {
+  if (authHeader !== `Bearer ${syncSecret}`) {
     logger.warn("Unauthorized sync attempt", "syncAPI", { 
       ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress 
     });

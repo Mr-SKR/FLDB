@@ -77,30 +77,40 @@ export default function FoodCard(props: FoodCardProps): React.ReactElement {
     >
       {/* Background Image */}
       <Box sx={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
-        {thumbnails.map((thumb, idx) => (
-          <Box
-            key={`${thumb.url}-${idx}`}
-            sx={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              opacity: idx === currentThumbIndex ? 1 : 0,
-              transition: "opacity 1s ease-in-out",
-              zIndex: idx === currentThumbIndex ? 0 : -1,
-            }}
-          >
-            <Image
-              src={thumb.url}
-              alt={props.title}
-              fill
-              sizes="(max-width: 500px) 100vw, 500px"
-              style={{ objectFit: "cover" }}
-              priority={props.index < 2 && idx === 0}
-            />
-          </Box>
-        ))}
+        {thumbnails.map((thumb, idx) => {
+          // Only render the current image and the next one to allow preloading/smooth transition.
+          // Always keep the first one (idx 0) rendered for priority/initial load consistency.
+          const isCurrent = idx === currentThumbIndex;
+          const isNext = idx === (currentThumbIndex + 1) % thumbnails.length;
+          const isInitial = idx === 0;
+
+          if (!isCurrent && !isNext && !isInitial) return null;
+
+          return (
+            <Box
+              key={`${thumb.url}-${idx}`}
+              sx={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                opacity: isCurrent ? 1 : 0,
+                transition: "opacity 1s ease-in-out",
+                zIndex: isCurrent ? 0 : -1,
+              }}
+            >
+              <Image
+                src={thumb.url}
+                alt={props.title}
+                fill
+                sizes="(max-width: 500px) 100vw, 500px"
+                style={{ objectFit: "cover" }}
+                priority={props.index < 2 && idx === 0}
+              />
+            </Box>
+          );
+        })}
         {/* Dark Gradient Overlay */}
         <Box
           sx={{

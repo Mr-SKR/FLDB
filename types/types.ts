@@ -52,4 +52,6 @@ export interface PlaceInterface {
     source?: "place" | "youtube";
   }[];
   searchContent?: string; // Aggregated text for full-text search
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
 }
