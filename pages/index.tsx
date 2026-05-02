@@ -14,7 +14,7 @@ import { Tune as TuneIcon, Close as CloseIcon } from "@mui/icons-material";
 import Head from "next/head";
 import { logger } from "../lib/logger";
 
-import { useGeolocation } from "../hooks/useGeolocation";
+import { useGeolocation, UserLocation } from "../hooks/useGeolocation";
 import { usePlaceFilters } from "../hooks/usePlaceFilters";
 import { getPlacesPaginated } from "../services/placeService";
 import { FeedViewer } from "../components/ui/FeedViewer";
@@ -38,6 +38,7 @@ const Home: React.FC<HomeProps> = ({ data }) => {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isLocationPromptOpen, setIsLocationPromptOpen] = useState(false);
   const observerTarget = useRef<HTMLDivElement>(null);
+  const feedContainerRef = useRef<HTMLDivElement>(null);
   const colorMode = useContext(ColorModeContext);
 
   const {
@@ -46,6 +47,8 @@ const Home: React.FC<HomeProps> = ({ data }) => {
     refreshLocation,
     clearLocation,
   } = useGeolocation();
+
+  const prevUserLocation = useRef<UserLocation | null>(userLocation);
 
   const {
     searchValue,
@@ -59,6 +62,14 @@ const Home: React.FC<HomeProps> = ({ data }) => {
     hasMore,
     loadMore,
   } = usePlaceFilters(data, userLocation);
+
+  // Auto-scroll to top when location is granted to show the newly sorted first item
+  useEffect(() => {
+    if (!prevUserLocation.current && userLocation && feedContainerRef.current) {
+      feedContainerRef.current.scrollTo({ top: 0, behavior: "smooth" });
+    }
+    prevUserLocation.current = userLocation;
+  }, [userLocation]);
 
   // Check for location permissions/prompt logic
   useEffect(() => {
@@ -191,6 +202,7 @@ const Home: React.FC<HomeProps> = ({ data }) => {
         >
           {/* Feed Content */}
           <FeedViewer
+            containerRef={feedContainerRef}
             filteredPlaces={filteredPlaces}
             userLocation={userLocation}
             refreshLocation={refreshLocation}

@@ -32,6 +32,7 @@ export const fetchLocationDetails = async (description: string) => {
     "rating",
     "url",
     "opening_hours",
+    "photos",
   ];
   
   for (let url of urls) {
@@ -55,14 +56,17 @@ export const fetchLocationDetails = async (description: string) => {
         url = replaceLinks[url];
       }
 
-      // Check for various Google Maps link patterns
-      if (/(maps|g\.page|g\.co|goo\.gl)/.test(url)) {
+      // Check for various Google Maps and Search link patterns
+      if (/(maps|g\.page|g\.co|goo\.gl|google\.com\/search)/.test(url)) {
         try {
           logger.debug(`Tracing URL: ${url}`, "locationDetails");
           const tracerResult = await tracer(url);
           logger.debug(`Resolved to: ${tracerResult}`, "locationDetails");
           
-          let locationURLParams: { ftid?: string; cid?: string } | null = null;
+          let locationURLParams: { ftid?: string; cid?: string; place_id?: string } | null = null;
+          let searchFallback: string | null = null;
+
+          const parsedTracerUrl = new URL(tracerResult);
 
           // 1. Try to extract FTID (0x...:0x...)
           // Prefer FTID that follows !1s marker (primary feature ID)
@@ -76,10 +80,26 @@ export const fetchLocationDetails = async (description: string) => {
           }
           // 2. Try to extract CID (ludocid or cid)
           else {
-            const cidMatch = tracerResult.match(/(?:ludocid|cid)=([0-9]+)/);
-            if (cidMatch) {
-              locationURLParams = { cid: cidMatch[1] };
+            const cid = parsedTracerUrl.searchParams.get("ludocid") || parsedTracerUrl.searchParams.get("cid");
+            if (cid && /^[0-9]+$/.test(cid)) {
+              locationURLParams = { cid };
             }
+          }
+
+          // 3. Try to extract Place ID or KGID from search parameters
+          if (!locationURLParams) {
+            const kgmid = parsedTracerUrl.searchParams.get("kgmid");
+            if (kgmid) {
+              // kgmid can sometimes be used as a place_id if it starts with /g/ or /m/
+              // but it's safer to use it as a search term or try to resolve it
+              searchFallback = kgmid;
+            }
+          }
+
+          // 4. Capture coordinate-based queries or names for fallback
+          const qParam = parsedTracerUrl.searchParams.get("q");
+          if (qParam) {
+            searchFallback = qParam;
           }
 
           let resolvedPlace: Partial<PlaceData> | null = null;
@@ -102,15 +122,23 @@ export const fetchLocationDetails = async (description: string) => {
             }
           } 
           
-          // 3. Fallback: Search by name if FTID/CID failed or returned invalid data
-          if (!resolvedPlace && tracerResult.includes("/maps/place/")) {
-            const nameMatch = tracerResult.match(/\/maps\/place\/([^/]+)/);
-            if (nameMatch) {
-              const decodedName = decodeURIComponent(nameMatch[1].replace(/\+/g, " "));
-              logger.debug(`Falling back to search by name: ${decodedName}`, "locationDetails");
+          // 5. Fallback: Search by name or coordinates
+          if (!resolvedPlace) {
+            let searchInput = searchFallback;
+            
+            // If no q param, try to extract name from path /maps/place/Name
+            if (!searchInput && tracerResult.includes("/maps/place/")) {
+              const nameMatch = tracerResult.match(/\/maps\/place\/([^/]+)/);
+              if (nameMatch) {
+                searchInput = decodeURIComponent(nameMatch[1].replace(/\+/g, " "));
+              }
+            }
+
+            if (searchInput) {
+              logger.debug(`Falling back to search by text: ${searchInput}`, "locationDetails");
               const findResponse = await googleMapsClient.findPlaceFromText({
                 params: {
-                  input: decodedName,
+                  input: searchInput,
                   inputtype: PlaceInputType.textQuery,
                   fields: ["place_id"],
                   key: googleMapsKey,
@@ -138,8 +166,16 @@ export const fetchLocationDetails = async (description: string) => {
           } else {
             logger.warn(`Could not resolve location from URL: ${tracerResult}`, "locationDetails");
           }
-        } catch (e) {
+        } catch (e: unknown) {
           logger.error(`Error processing Google Maps URL ${url}`, "locationDetails", e);
+          
+          // Type-safe way to check for specific error status codes from the Google Maps client/axios
+          if (typeof e === 'object' && e !== null && 'response' in e) {
+            const response = (e as { response: { status: number } }).response;
+            if (response && (response.status === 429 || response.status === 403)) {
+              throw e;
+            }
+          }
         }
       }
     }

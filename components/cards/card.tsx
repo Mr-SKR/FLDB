@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Button,
   Typography,
@@ -19,6 +19,7 @@ interface FoodCardProps {
   slug: string;
   height: string | number;
   thumbnail: string;
+  allThumbnails?: { small?: string; large?: string; source?: "place" | "youtube" }[];
   title: string;
   address: string;
   displacement: number;
@@ -32,7 +33,22 @@ interface FoodCardProps {
 
 export default function FoodCard(props: FoodCardProps): React.ReactElement {
   const router = useRouter();
+  const [currentThumbIndex, setCurrentThumbIndex] = useState(0);
   const ratingValue = typeof props.rating === "string" ? parseFloat(props.rating) : props.rating;
+
+  const thumbnails = props.allThumbnails && props.allThumbnails.length > 0 
+    ? props.allThumbnails.map(t => ({ url: (t.large || t.small || ""), source: t.source }))
+    : [{ url: props.thumbnail, source: undefined as "place" | "youtube" | undefined }];
+
+  useEffect(() => {
+    if (thumbnails.length <= 1) return;
+
+    const interval = setInterval(() => {
+      setCurrentThumbIndex((prev) => (prev + 1) % thumbnails.length);
+    }, 4000); // Cycle every 4 seconds
+
+    return () => clearInterval(interval);
+  }, [thumbnails.length]);
 
   const handleCardClick = (e: React.MouseEvent) => {
     // Only navigate if the user didn't click an interactive element (button/chip/link)
@@ -61,13 +77,30 @@ export default function FoodCard(props: FoodCardProps): React.ReactElement {
     >
       {/* Background Image */}
       <Box sx={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
-        <Image
-          src={props.thumbnail}
-          alt={props.title}
-          fill
-          style={{ objectFit: "cover" }}
-          priority={props.index < 2}
-        />
+        {thumbnails.map((thumb, idx) => (
+          <Box
+            key={`${thumb.url}-${idx}`}
+            sx={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              opacity: idx === currentThumbIndex ? 1 : 0,
+              transition: "opacity 1s ease-in-out",
+              zIndex: idx === currentThumbIndex ? 0 : -1,
+            }}
+          >
+            <Image
+              src={thumb.url}
+              alt={props.title}
+              fill
+              sizes="(max-width: 500px) 100vw, 500px"
+              style={{ objectFit: "cover" }}
+              priority={props.index < 2 && idx === 0}
+            />
+          </Box>
+        ))}
         {/* Dark Gradient Overlay */}
         <Box
           sx={{
@@ -82,6 +115,34 @@ export default function FoodCard(props: FoodCardProps): React.ReactElement {
         />
       </Box>
 
+      {/* Thumbnail Indicators */}
+      {thumbnails.length > 1 && (
+        <Stack 
+          direction="row" 
+          spacing={0.5} 
+          sx={{ 
+            position: "absolute", 
+            top: 10, 
+            left: "50%", 
+            transform: "translateX(-50%)", 
+            zIndex: 3 
+          }}
+        >
+          {thumbnails.map((_, idx) => (
+            <Box
+              key={idx}
+              sx={{
+                width: idx === currentThumbIndex ? 20 : 6,
+                height: 4,
+                borderRadius: 2,
+                bgcolor: idx === currentThumbIndex ? "white" : "rgba(255,255,255,0.4)",
+                transition: "all 0.3s ease",
+              }}
+            />
+          ))}
+        </Stack>
+      )}
+
       {/* Top Badges */}
       <Box
         sx={{
@@ -95,19 +156,40 @@ export default function FoodCard(props: FoodCardProps): React.ReactElement {
           zIndex: 2,
         }}
       >
-        {props.hasVeg && (
-          <Chip
-            icon={<RestaurantIcon sx={{ fontSize: "1rem !important", color: "white !important" }} />}
-            label="Veg Friendly"
-            size="small"
-            sx={{
-              bgcolor: "success.main",
-              color: "white",
-              fontWeight: "bold",
-              boxShadow: 3,
-            }}
-          />
-        )}
+        <Stack direction="column" spacing={1} alignItems="flex-start">
+          {props.hasVeg && (
+            <Chip
+              icon={<RestaurantIcon sx={{ fontSize: "1rem !important", color: "white !important" }} />}
+              label="Veg Friendly"
+              size="small"
+              sx={{
+                bgcolor: "success.main",
+                color: "white",
+                fontWeight: "bold",
+                boxShadow: 3,
+              }}
+            />
+          )}
+
+          {thumbnails[currentThumbIndex]?.source && (
+            <Chip
+              label={thumbnails[currentThumbIndex].source === "place" ? "Place Photo" : "From Video"}
+              size="small"
+              sx={{
+                bgcolor: "rgba(0,0,0,0.6)",
+                color: "white",
+                fontSize: "0.65rem",
+                height: "20px",
+                border: "1px solid rgba(255,255,255,0.2)",
+                backdropFilter: "blur(4px)",
+                textTransform: "uppercase",
+                fontWeight: "bold",
+                letterSpacing: "0.05em",
+                "& .MuiChip-label": { px: 1 }
+              }}
+            />
+          )}
+        </Stack>
       </Box>
 
       {/* Bottom Content Overlay */}

@@ -55,9 +55,14 @@ export const usePlaceFilters = (initialData: PlaceInterface[], userLocation: Use
     }
 
     try {
-      const res = await fetch(
-        `/api/search?q=${encodeURIComponent(search)}&veg=${veg}&page=${pageNum}&limit=${PAGE_SIZE}`
-      );
+      const lat = userLocation?.lat;
+      const lng = userLocation?.long;
+      let url = `/api/search?q=${encodeURIComponent(search)}&veg=${veg}&page=${pageNum}&limit=${PAGE_SIZE}`;
+      if (lat !== undefined && lng !== undefined) {
+        url += `&lat=${lat}&lng=${lng}`;
+      }
+
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
         if (append) {
@@ -75,19 +80,21 @@ export const usePlaceFilters = (initialData: PlaceInterface[], userLocation: Use
       setIsLoadingMore(false);
       isFirstRender.current = false;
     }
-  }, []);
+  }, [userLocation]); // Added userLocation to dependencies
 
   // Debounced search/filter trigger
   useEffect(() => {
     if (!isHydrated) return;
 
     if (isFirstRender.current) {
-      if (!searchValue && !hasVeg) {
+      // If we don't have location yet and no filters, skip initial fetch
+      // But if we just got location, we should fetch!
+      if (!searchValue && !hasVeg && !userLocation) {
         isFirstRender.current = false;
         return;
       }
       
-      // If we HAVE filters on hydration, fetch immediately
+      // If we HAVE filters or location on hydration/render, fetch immediately
       queueMicrotask(() => {
         fetchPlaces(1, searchValue, hasVeg, false);
       });
@@ -100,7 +107,7 @@ export const usePlaceFilters = (initialData: PlaceInterface[], userLocation: Use
     }, 500);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [searchValue, hasVeg, fetchPlaces, isHydrated]);
+  }, [searchValue, hasVeg, userLocation, fetchPlaces, isHydrated]); // Added userLocation to dependencies
 
   const loadMore = useCallback(() => {
     if (!hasMore || isLoadingMore || isSearching || isInitialLoading) return;
@@ -114,13 +121,16 @@ export const usePlaceFilters = (initialData: PlaceInterface[], userLocation: Use
 
     if (userLocation) {
       result = result.map((place) => {
-        if (place.geometry?.location?.lat && place.geometry?.location?.lng) {
+        const lat = place.geometry?.location?.lat;
+        const lng = place.geometry?.location?.lng;
+
+        if (lat != null && lng != null) {
           const displacement = Math.ceil(
             getDisplacementFromLatLonInKm(
               userLocation.lat,
               userLocation.long,
-              place.geometry.location.lat,
-              place.geometry.location.lng
+              lat,
+              lng
             )
           );
           return { ...place, displacement };
@@ -128,6 +138,9 @@ export const usePlaceFilters = (initialData: PlaceInterface[], userLocation: Use
         return { ...place, displacement: Infinity };
       });
 
+      // If we are browsing (no search), sort by distance
+      // Note: Server already sorts, but client-side sort handles re-sorting 
+      // when location changes slightly without a re-fetch
       if (!searchValue) {
         result.sort((a, b) => (a.displacement ?? Infinity) - (b.displacement ?? Infinity));
       }

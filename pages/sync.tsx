@@ -19,12 +19,17 @@ import {
   Select,
   FormControl,
   InputLabel,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
 import {
   Sync as SyncIcon,
   CheckCircle as CheckCircleIcon,
   CloudDownload as CloudDownloadIcon,
   PlayArrow as PlayArrowIcon,
+  ArrowBack as ArrowBackIcon,
+  ArrowForward as ArrowForwardIcon,
+  Refresh as RefreshIcon,
 } from "@mui/icons-material";
 import ResponsiveDrawer from "../components/headers/Header";
 import Head from "next/head";
@@ -54,6 +59,7 @@ const SyncPage = () => {
   const [selectedPlaylist, setSelectedPlaylist] = useState("");
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [nextPageToken, setNextPageToken] = useState<string | undefined>(undefined);
+  const [prevPageToken, setPrevPageToken] = useState<string | undefined>(undefined);
   const [loadingList, setLoadingList] = useState(false);
   const [syncingAll, setSyncingAll] = useState(false);
   const [globalError, setGlobalError] = useState("");
@@ -106,6 +112,10 @@ const SyncPage = () => {
       });
       setVideos(sortedVideos);
       setNextPageToken(data.nextPageToken);
+      setPrevPageToken(data.prevPageToken);
+      
+      // Scroll to top of list after fetching
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: unknown) {
       setGlobalError(err instanceof Error ? err.message : "An error occurred");
     } finally {
@@ -169,6 +179,54 @@ const SyncPage = () => {
   };
 
   const syncedCount = videos.filter(v => v.isSynced).length;
+
+  const PaginationControls = () => (
+    <Box 
+      display="flex" 
+      alignItems="center" 
+      justifyContent="center" 
+      gap={2} 
+      sx={{ my: 2 }}
+    >
+      <Tooltip title="Previous Page">
+        <span>
+          <Button
+            variant="outlined"
+            onClick={() => fetchVideoList(prevPageToken)}
+            disabled={!prevPageToken || loadingList || syncingAll}
+            startIcon={<ArrowBackIcon />}
+          >
+            Prev
+          </Button>
+        </span>
+      </Tooltip>
+      
+      <Tooltip title="Refresh Current Page">
+        <span>
+          <IconButton 
+            onClick={() => fetchVideoList(undefined)} // Note: Better refresh logic would use the current page's token if available
+            disabled={loadingList || syncingAll || videos.length === 0}
+            color="primary"
+          >
+            <RefreshIcon />
+          </IconButton>
+        </span>
+      </Tooltip>
+
+      <Tooltip title="Next Page">
+        <span>
+          <Button
+            variant="outlined"
+            onClick={() => fetchVideoList(nextPageToken)}
+            disabled={!nextPageToken || loadingList || syncingAll}
+            endIcon={<ArrowForwardIcon />}
+          >
+            Next
+          </Button>
+        </span>
+      </Tooltip>
+    </Box>
+  );
 
   return (
     <Box sx={{ bgcolor: "background.default", minHeight: "100vh" }}>
@@ -267,14 +325,25 @@ const SyncPage = () => {
 
           <Divider sx={{ mb: 2 }} />
 
+          {(nextPageToken || prevPageToken) && <PaginationControls />}
+
           <List sx={{ width: "100%", bgcolor: "background.paper" }}>
             {videos.length === 0 && !loadingList && (
               <Box textAlign="center" py={4} color="text.disabled">
                 No videos loaded. Enter secret and click &quot;Load Playlist&quot;.
               </Box>
             )}
+
+            {loadingList && (
+              <Box textAlign="center" py={8}>
+                <CircularProgress />
+                <Typography variant="body2" sx={{ mt: 2 }} color="text.secondary">
+                  Fetching videos...
+                </Typography>
+              </Box>
+            )}
             
-            {videos.map((video) => (
+            {!loadingList && videos.map((video) => (
               <ListItem
                 key={video.videoId}
                 divider
@@ -353,18 +422,7 @@ const SyncPage = () => {
             ))}
           </List>
 
-          {nextPageToken && !loadingList && (
-            <Box mt={4} textAlign="center">
-              <Button
-                variant="outlined"
-                onClick={() => fetchVideoList(nextPageToken)}
-                disabled={syncingAll}
-                startIcon={<CloudDownloadIcon />}
-              >
-                Load Next Page (50 more)
-              </Button>
-            </Box>
-          )}
+          {(nextPageToken || prevPageToken) && !loadingList && <PaginationControls />}
         </Paper>
       </Container>
     </Box>

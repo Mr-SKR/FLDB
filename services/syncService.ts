@@ -1,4 +1,6 @@
 import { google, youtube_v3 } from "googleapis";
+import { Client } from "@googlemaps/google-maps-services-js";
+import sharp from "sharp";
 import dbConnect from "../lib/dbConnect";
 import Video from "../models/Video";
 import Place from "../models/Place";
@@ -7,9 +9,53 @@ import { fetchLocationDetails } from "../lib/locationDetails";
 import { slugify } from "../utils/slugify";
 import { env } from "../lib/env";
 import { logger } from "../lib/logger";
-import { VideoInterface } from "../types/types";
+import { PlaceInterface, VideoInterface } from "../types/types";
 
 const youtube: youtube_v3.Youtube = google.youtube("v3");
+const googleMapsClient = new Client({});
+
+/**
+ * Helper to add a delay between API calls.
+ */
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+/**
+ * Downloads a photo from Google Maps and encodes it to a Base64 data URL.
+ * Resizes to max 480px to save database space.
+ */
+const fetchAndEncodePlacePhoto = async (photoReference: string): Promise<string | undefined> => {
+  if (!photoReference) return undefined;
+  
+  const apiKey = env.GOOGLE_MAPS_API_KEY;
+  
+  try {
+    const response = await googleMapsClient.placePhoto({
+      params: {
+        photoreference: photoReference,
+        maxwidth: 480,
+        key: apiKey,
+      },
+      responseType: "arraybuffer",
+    });
+
+    if (response.status !== 200) {
+      throw new Error(`Failed to fetch photo: ${response.statusText}`);
+    }
+    
+    // Process with sharp to ensure standard sizing and compression
+    const resizedBuffer = await sharp(response.data as ArrayBuffer)
+      .resize(480, 480, { fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 80 })
+      .toBuffer();
+
+    const base64 = resizedBuffer.toString("base64");
+    
+    return `data:image/jpeg;base64,${base64}`;
+  } catch (err) {
+    logger.error("Error fetching and encoding place photo", "syncService", err);
+    return undefined;
+  }
+};
 
 /**
  * Cleans video description by removing URLs and extra noise for search indexing.
@@ -23,10 +69,10 @@ const cleanDescription = (text: string) => {
 };
 
 /**
- * Rebuilds the searchContent for a place by aggregating info from its videos.
+ * Rebuilds the searchContent and allThumbnails for a place by aggregating info from its videos.
+ * Mutates the passed place document in place.
  */
-const updatePlaceSearchContent = async (placeId: string) => {
-  const place = await Place.findOne({ place_id: placeId });
+const updatePlaceSearchContent = async (place: PlaceInterface) => {
   if (!place) return;
 
   const videos = await Video.find({ videoId: { $in: place.videoIds } });
@@ -36,8 +82,36 @@ const updatePlaceSearchContent = async (placeId: string) => {
   
   // Update hasVeg based on videos
   place.hasVeg = videos.some(v => v.hasVeg);
+
+  // Update allThumbnails
+  const allThumbnails: { small?: string; large?: string; source?: "place" | "youtube" }[] = [];
+
+  // 1. Add Place Photo if available (Stored as Base64)
+  if (place.placePhotoBase64 && place.placePhotoBase64 !== "none") {
+    allThumbnails.push({
+      small: place.placePhotoBase64,
+      large: place.placePhotoBase64,
+      source: "place"
+    });
+  }
+
+  // 2. Add YouTube thumbnails
+  const videoThumbs = videos
+    .map(v => v.thumbnail)
+    .filter((t): t is { small: string; large: string } => !!t && (!!t.small || !!t.large))
+    .map(t => ({ ...t, source: "youtube" as const }));
   
-  await place.save();
+  allThumbnails.push(...videoThumbs);
+
+  place.allThumbnails = allThumbnails;
+  
+  // Set main thumbnail to the first available one
+  if (allThumbnails.length > 0) {
+    place.thumbnail = {
+      small: allThumbnails[0].small,
+      large: allThumbnails[0].large
+    };
+  }
 };
 
 export const getPlaylistVideos = async (playlistId?: string, pageToken?: string) => {
@@ -46,36 +120,36 @@ export const getPlaylistVideos = async (playlistId?: string, pageToken?: string)
 
   let videosInPlayLists: youtube_v3.Schema$PlaylistItem[] = [];
   let nextPageToken: string | undefined = undefined;
+  let prevPageToken: string | undefined = undefined;
 
   // Determine which playlists to fetch
-  const playlistsToFetch = playlistId 
-    ? [{ id: playlistId, isVeg: false }] // If specific playlist, we don't know if it's veg unless we check config
-    : syncConfig.sources.flatMap(s => s.playlists);
-
-  // If we are fetching multiple playlists, we need a way to identify which ones are veg
+  const targetPlaylistIds = playlistId ? [playlistId] : syncConfig.sources.flatMap(s => s.playlists.map(p => p.id));
   const vegPlaylistIds = syncConfig.sources.flatMap(s => s.playlists.filter(p => p.isVeg).map(p => p.id));
 
   try {
-    // If a specific playlistId is provided, we only fetch that one
-    const targetPlaylistIds = playlistId ? [playlistId] : syncConfig.sources.flatMap(s => s.playlists.map(p => p.id));
-
     for (const id of targetPlaylistIds) {
-      logger.debug(`Fetching items for playlist: ${id}`, "syncService");
-      const response = (await youtube.playlistItems.list({
-        key: youtubeKey,
-        part: ["snippet"],
-        playlistId: id,
-        maxResults: 50,
-        pageToken: pageToken,
-      })) as unknown as { data: youtube_v3.Schema$PlaylistItemListResponse };
-
-      videosInPlayLists = videosInPlayLists.concat(response.data.items || []);
-      nextPageToken = response.data.nextPageToken || undefined;
+      let currentToken: string | undefined = playlistId ? pageToken : undefined;
       
-      // If we are paginating and got a nextPageToken, we stop here for this playlist to return to user
-      if (nextPageToken && targetPlaylistIds.length > 1) {
-        break; 
-      }
+      do {
+        logger.debug(`Fetching items for playlist: ${id}`, "syncService");
+        const response = (await youtube.playlistItems.list({
+          key: youtubeKey,
+          part: ["snippet"],
+          playlistId: id,
+          maxResults: 50,
+          pageToken: currentToken,
+        })) as unknown as { data: youtube_v3.Schema$PlaylistItemListResponse };
+
+        videosInPlayLists = videosInPlayLists.concat(response.data.items || []);
+        currentToken = response.data.nextPageToken || undefined;
+        
+        // If a specific playlist was requested, we handle pagination manually by returning the token
+        if (playlistId) {
+          nextPageToken = currentToken;
+          prevPageToken = response.data.prevPageToken || undefined;
+          break; 
+        }
+      } while (currentToken);
     }
   } catch (err) {
     logger.error("Error fetching playlists", "syncService", err);
@@ -123,7 +197,8 @@ export const getPlaylistVideos = async (playlistId?: string, pageToken?: string)
 
   return {
     videos: mappedVideos,
-    nextPageToken
+    nextPageToken,
+    prevPageToken
   };
 };
 
@@ -182,56 +257,98 @@ export const syncSingleVideo = async (videoId: string, mode: "soft" | "hard" = "
       hasVeg: finalHasVeg,
     };
 
-    await Video.findOneAndUpdate({ videoId: video.id }, videoData, { upsert: true });
-
     logger.debug(`Extracting location details from description for: ${videoId}`, "syncService");
     const locations = await fetchLocationDetails(video.snippet.description);
     logger.info(`Locations found for ${videoId}: ${locations.length}`, "syncService");
-    
+
+    if (locations.length === 0) {
+      logger.info(`SKIPPED: No locations found for video ${videoId}`, "syncService");
+      return { status: "skipped", message: "No locations found" };
+    }
+
+    await Video.findOneAndUpdate({ videoId: video.id }, videoData, { upsert: true });
+
     for (const loc of locations) {
       if (!loc.place_id) {
         logger.warn(`Skipping location with no place_id: ${loc.name}`, "syncService");
         continue;
       }
 
+      if (loc.business_status === "CLOSED_PERMANENTLY") {
+        logger.info(`SKIPPING: ${loc.name} is CLOSED_PERMANENTLY.`, "syncService");
+        continue;
+      }
+
+      if (loc.rating === undefined || loc.rating === null) {
+        logger.info(`SKIPPING: No rating/reviews found for ${loc.name} (${loc.place_id}).`, "syncService");
+        continue;
+      }
+
       logger.debug(`Processing location: ${loc.name} (${loc.place_id})`, "syncService");
       const slug = slugify(loc.name || "");
-      const placeData = {
-        place_id: loc.place_id,
-        name: loc.name,
-        formatted_address: loc.formatted_address,
-        geometry: loc.geometry,
-        international_phone_number: loc.international_phone_number,
-        rating: loc.rating,
-        url: loc.url,
-        opening_hours: loc.opening_hours,
-        business_status: loc.business_status,
-        slug: slug,
-        thumbnail: videoData.thumbnail,
-        hasVeg: finalHasVeg, // Ensure place gets the hasVeg status
-      };
+      const photoRef = loc.photos?.[0]?.photo_reference;
 
       try {
-        const existingPlace = await Place.findOne({ place_id: loc.place_id });
-        if (existingPlace) {
-          if (mode === "hard") {
-            logger.info(`Updating existing Place data for: ${loc.name}`, "syncService");
-            Object.assign(existingPlace, placeData);
-          } else {
-            // Even in soft sync, ensure hasVeg is updated if it's now true
-            if (finalHasVeg) existingPlace.hasVeg = true;
+        let placeDoc = await Place.findOne({ place_id: loc.place_id });
+        let placePhotoBase64 = undefined;
+
+        // Optimization: Only fetch photo if we don't already have it, OR if it's a hard sync
+        if (photoRef && (!placeDoc || !placeDoc.placePhotoBase64 || mode === "hard")) {
+          logger.info(`Fetching photo for ${loc.name}${mode === "hard" ? " (Hard Sync)" : ""}`, "syncService");
+          placePhotoBase64 = await fetchAndEncodePlacePhoto(photoRef);
+          if (placePhotoBase64) {
+            await sleep(500); // Throttling
           }
-          
-          if (!existingPlace.videoIds.includes(videoId)) {
-            existingPlace.videoIds.push(videoId);
-          }
-          await existingPlace.save();
-        } else {
-          logger.info(`Creating NEW Place entry for: ${loc.name}`, "syncService");
-          await new Place({ ...placeData, videoIds: [videoId] }).save();
         }
 
-        await updatePlaceSearchContent(loc.place_id);
+        const placeData: Partial<PlaceInterface> = {
+          place_id: loc.place_id,
+          name: loc.name,
+          formatted_address: loc.formatted_address,
+          geometry: loc.geometry as PlaceInterface["geometry"],
+          international_phone_number: loc.international_phone_number,
+          rating: loc.rating,
+          url: loc.url,
+          opening_hours: loc.opening_hours as PlaceInterface["opening_hours"],
+          business_status: loc.business_status,
+          slug: slug,
+          thumbnail: videoData.thumbnail,
+          hasVeg: finalHasVeg, // Ensure place gets the hasVeg status
+          placePhotoReference: photoRef,
+        };
+
+        if (placePhotoBase64) {
+          placeData.placePhotoBase64 = placePhotoBase64;
+        } else if (photoRef === undefined && (!placeDoc || !placeDoc.placePhotoBase64)) {
+          // Explicitly mark as checked if no photo ref available
+          placeData.placePhotoBase64 = "none";
+        }
+
+        if (placeDoc) {
+          if (mode === "hard") {
+            logger.info(`Updating existing Place data for: ${loc.name}`, "syncService");
+            Object.assign(placeDoc, placeData);
+          } else {
+            // Even in soft sync, ensure hasVeg is updated if it's now true
+            if (finalHasVeg) placeDoc.hasVeg = true;
+            // Also update photo if missing
+            if (placePhotoBase64 && !placeDoc.placePhotoBase64) {
+              placeDoc.placePhotoBase64 = placePhotoBase64;
+              placeDoc.placePhotoReference = photoRef;
+            }
+          }
+          
+          if (!placeDoc.videoIds.includes(videoId)) {
+            placeDoc.videoIds.push(videoId);
+          }
+        } else {
+          logger.info(`Creating NEW Place entry for: ${loc.name}`, "syncService");
+          placeDoc = new Place({ ...placeData, videoIds: [videoId] });
+        }
+
+        await updatePlaceSearchContent(placeDoc);
+        await placeDoc.save();
+
       } catch (placeErr) {
         logger.error(`Error saving place ${loc.name} for video ${videoId}`, "syncService", placeErr);
       }

@@ -12,6 +12,7 @@ interface FeedViewerProps {
   isLoadingMore: boolean;
   isSearching: boolean;
   observerTarget: React.RefObject<HTMLDivElement | null>;
+  containerRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 export const FeedViewer: React.FC<FeedViewerProps> = ({
@@ -21,9 +22,11 @@ export const FeedViewer: React.FC<FeedViewerProps> = ({
   isLoadingMore,
   isSearching,
   observerTarget,
+  containerRef,
 }) => {
   return (
     <Box 
+      ref={containerRef}
       sx={{ 
         width: "100%",
         height: "100%",
@@ -50,6 +53,7 @@ export const FeedViewer: React.FC<FeedViewerProps> = ({
             hasVeg={place.hasVeg || false}
             height="100%"
             thumbnail={place.thumbnail?.large || place.thumbnail?.small || ""}
+            allThumbnails={place.allThumbnails}
             useLocation={!!userLocation}
             setUseLocation={refreshLocation}
             index={index}

@@ -28,7 +28,18 @@ export const useGeolocation = () => {
       sessionStorage.setItem("userLocation", JSON.stringify(newLocation));
       return true;
     } catch (err) {
-      if (!silent) setError((err as Error).message);
+      if (!silent) {
+        const error = err as GeolocationPositionError;
+        let message = "Could not get your location.";
+        if (error.code === 1) {
+          message = "Location permission denied. Please enable it in your browser settings.";
+        } else if (error.code === 2 || error.message?.includes("kCLErrorLocationUnknown")) {
+          message = "Location unavailable. Please check your GPS signal or try again later.";
+        } else if (error.code === 3) {
+          message = "Location request timed out. Please try again.";
+        }
+        setError(message);
+      }
       return false;
     } finally {
       if (!silent) setLoading(false);

@@ -44,5 +44,12 @@ export interface PlaceInterface {
     small?: string;
     large?: string;
   };
+  placePhotoReference?: string;
+  placePhotoBase64?: string;
+  allThumbnails?: {
+    small?: string;
+    large?: string;
+    source?: "place" | "youtube";
+  }[];
   searchContent?: string; // Aggregated text for full-text search
 }

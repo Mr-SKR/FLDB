@@ -9,14 +9,14 @@ import { serializeDocument, serializeDocuments } from "../utils/serialize";
  */
 export const getAllPlaces = async (): Promise<PlaceInterface[]> => {
   await dbConnect();
-  const fields = "_id place_id name slug geometry hasVeg thumbnail formatted_address rating url";
+  const fields = "_id place_id name slug geometry hasVeg thumbnail allThumbnails formatted_address rating url";
   const places = await Place.find({}, fields).lean();
   return serializeDocuments<PlaceInterface>(places);
 };
 
 export const getPlacesPaginated = async (page: number = 1, limit: number = 10): Promise<{ data: PlaceInterface[], total: number }> => {
   await dbConnect();
-  const fields = "_id place_id name slug geometry hasVeg thumbnail formatted_address rating url";
+  const fields = "_id place_id name slug geometry hasVeg thumbnail allThumbnails formatted_address rating url";
   const skip = (page - 1) * limit;
   
   const [places, total] = await Promise.all([

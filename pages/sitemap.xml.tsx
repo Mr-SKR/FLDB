@@ -7,7 +7,7 @@ const Sitemap = () => {
 };
 
 export const getServerSideProps = async ({ res }: { res: NextApiResponse }) => {
-  const BASE_URL = process.env.HOST || "https://fl-db.in";
+  const BASE_URL = process.env.HOST || "https://foodloversdatabase.com";
 
   const staticPaths = ["", "about"].map((staticPagePath) => {
     return `${BASE_URL}/${staticPagePath}`;

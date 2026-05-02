@@ -29,6 +29,13 @@ const PlaceSchema = new Schema<PlaceInterface>({
     small: String,
     large: String,
   },
+  placePhotoReference: String,
+  placePhotoBase64: String,
+  allThumbnails: [{
+    small: String,
+    large: String,
+    source: String,
+  }],
   slug: { type: String, required: true, unique: true },
   searchContent: String,
 }, { timestamps: true, collection: 'places' });

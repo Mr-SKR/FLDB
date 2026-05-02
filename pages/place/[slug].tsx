@@ -238,7 +238,6 @@ const PlacePage: React.FC<PlacePageProps> = ({ place, videos, host }) => {
                   }}
                 >
                   <DiscussionEmbed
-                    key={theme.palette.mode}
                     shortname={process.env.NEXT_PUBLIC_DISQUS_SHORTNAME || "disqus-shortname"}
                     config={{
                       url: (host || "https://fl-db.in") + router.asPath,
