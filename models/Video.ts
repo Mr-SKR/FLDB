@@ -7,6 +7,8 @@ const VideoSchema = new Schema<VideoInterface>({
   videoDescription: String,
   channelId: String,
   channelTitle: String,
+  /** YouTube publish date; required by schema.org VideoObject (`uploadDate`). */
+  publishedAt: Date,
   thumbnail: {
     small: String,
     large: String,

@@ -13,6 +13,16 @@ import {
 import { Tune as TuneIcon, Close as CloseIcon } from "@mui/icons-material";
 import Head from "next/head";
 import { logger } from "../lib/logger";
+import { Seo } from "../components/seo/Seo";
+import { JsonLd } from "../components/seo/JsonLd";
+import {
+  absoluteUrl,
+  buildItemListJsonLd,
+  buildWebSiteJsonLd,
+  getSiteUrl,
+  JsonLd as JsonLdType,
+} from "../lib/seo";
+import { SITE_DESCRIPTION, SITE_NAME } from "../config/constants";
 
 import { useGeolocation, UserLocation } from "../hooks/useGeolocation";
 import { usePlaceFilters } from "../hooks/usePlaceFilters";
@@ -24,6 +34,7 @@ import ResponsiveDrawer from "../components/headers/Header";
 import { LoadingScreen } from "../components/ui/LoadingScreen";
 import { LocationPrompt } from "../components/ui/LocationPrompt";
 import { MobileControls } from "../components/ui/MobileControls";
+import { PAGE_SIZE } from "../config/constants";
 
 const Alert = forwardRef<HTMLDivElement, AlertProps>(function Alert(props, ref) {
   return <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />;
@@ -31,9 +42,11 @@ const Alert = forwardRef<HTMLDivElement, AlertProps>(function Alert(props, ref) 
 
 interface HomeProps {
   data: PlaceInterface[];
+  canonical: string;
+  jsonLd: JsonLdType[];
 }
 
-const Home: React.FC<HomeProps> = ({ data }) => {
+const Home: React.FC<HomeProps> = ({ data, canonical, jsonLd }) => {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isLocationPromptOpen, setIsLocationPromptOpen] = useState(false);
   const observerTarget = useRef<HTMLDivElement>(null);
@@ -61,6 +74,7 @@ const Home: React.FC<HomeProps> = ({ data }) => {
     isInitialLoading,
     hasMore,
     loadMore,
+    resetFilters,
   } = usePlaceFilters(data, userLocation);
 
   // Auto-scroll to top when location is granted to show the newly sorted first item
@@ -129,12 +143,43 @@ const Home: React.FC<HomeProps> = ({ data }) => {
         overflow: "hidden",
       }}
     >
+      <Seo
+        title={`${SITE_NAME} — Restaurants Reviewed by India's Best Food Vloggers`}
+        description={SITE_DESCRIPTION}
+        canonical={canonical}
+      />
+      {jsonLd.map((data, index) => (
+        <JsonLd key={index} data={data} />
+      ))}
       <Head>
-        <title>FLDb | Food Lovers Database</title>
         {/* The canonical viewport tag lives in _app.tsx. It deliberately does not set
             maximum-scale/user-scalable=0, which would disable pinch-zoom (WCAG 1.4.4). */}
         <meta name="theme-color" content="#000000" />
       </Head>
+
+      {/*
+        The page's single h1. It is visually hidden because the design is a full-bleed
+        media feed with no room for a heading, but the document still needs one: without
+        it the home page opened straight into a run of h2 card titles, leaving search
+        engines to infer the subject of the site's most important page from nothing.
+        Clipped rather than `display: none`, so assistive technology still announces it.
+      */}
+      <Typography
+        variant="h1"
+        sx={{
+          position: "absolute",
+          width: 1,
+          height: 1,
+          padding: 0,
+          margin: -1,
+          overflow: "hidden",
+          clip: "rect(0 0 0 0)",
+          whiteSpace: "nowrap",
+          border: 0,
+        }}
+      >
+        {SITE_NAME} — restaurants reviewed by India&apos;s best food vloggers
+      </Typography>
 
       {showLoadingOverlay && <LoadingScreen />}
 
@@ -189,6 +234,7 @@ const Home: React.FC<HomeProps> = ({ data }) => {
             isLoadingMore={isLoadingMore}
             isSearching={isSearching}
             observerTarget={observerTarget}
+            onClearFilters={resetFilters}
           />
 
           {/* Filter FAB - Now anchored to the feed wrapper */}
@@ -263,7 +309,7 @@ const Home: React.FC<HomeProps> = ({ data }) => {
           }} />
           
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-            <Typography variant="h6" sx={{ fontWeight: "bold" }}>Explore & Filter</Typography>
+            <Typography variant="h6" component="h2" sx={{ fontWeight: "bold" }}>Explore & Filter</Typography>
             <IconButton onClick={() => setIsFilterOpen(false)} size="small" sx={{ bgcolor: "action.hover" }}>
               <CloseIcon />
             </IconButton>
@@ -299,16 +345,33 @@ const Home: React.FC<HomeProps> = ({ data }) => {
 const HOME_REVALIDATE_SECONDS = 3600;
 
 export const getStaticProps = async () => {
+  const siteUrl = getSiteUrl();
+  const canonical = absoluteUrl(siteUrl, "/");
+
   try {
-    const { data } = await getPlacesPaginated(1, 10);
+    // Must match PAGE_SIZE: the client infers `hasMore` from whether a response came back
+    // full, so a server-rendered first page of a different size would break paging.
+    const { data } = await getPlacesPaginated(1, PAGE_SIZE);
+    const places = data || [];
+
     return {
-      props: { data: data || [] },
+      props: {
+        data: places,
+        canonical,
+        jsonLd: [
+          buildWebSiteJsonLd(siteUrl),
+          buildItemListJsonLd(
+            places.map((place) => ({ name: place.name, slug: place.slug })),
+            siteUrl
+          ),
+        ],
+      },
       revalidate: HOME_REVALIDATE_SECONDS,
     };
   } catch (error) {
     logger.error("Error in getStaticProps", "Home", error);
     return {
-      props: { data: [] },
+      props: { data: [], canonical, jsonLd: [buildWebSiteJsonLd(siteUrl)] },
       // Retry sooner after a failure so a transient database error does not pin an empty
       // page in the cache for a full hour.
       revalidate: 60,

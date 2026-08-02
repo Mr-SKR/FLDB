@@ -48,7 +48,12 @@ export default function SearchAppBar({ showThemeToggle = true, showAbout = true 
           </Box>
 
           {showThemeToggle && (
-            <IconButton sx={{ ml: 1 }} onClick={toggleColorMode} color="inherit">
+            <IconButton
+              sx={{ ml: 1 }}
+              onClick={toggleColorMode}
+              color="inherit"
+              aria-label={resolvedMode === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            >
               {resolvedMode === "dark" ? <Brightness7Icon /> : <Brightness4Icon />}
             </IconButton>
           )}

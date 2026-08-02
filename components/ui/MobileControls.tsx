@@ -21,6 +21,7 @@ export const MobileControls: React.FC = () => {
       {/* Mobile Info Button */}
       <IconButton
         onClick={() => router.push("/about")}
+        aria-label="About FLDb"
         sx={{
           position: "fixed",
           top: 16,
@@ -40,6 +41,7 @@ export const MobileControls: React.FC = () => {
       {/* Mobile Theme Toggle */}
       <IconButton
         onClick={toggleColorMode}
+        aria-label={resolvedMode === "light" ? "Switch to dark mode" : "Switch to light mode"}
         sx={{
           position: "fixed",
           top: 72,

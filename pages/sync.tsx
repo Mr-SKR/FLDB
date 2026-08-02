@@ -266,6 +266,12 @@ const SyncPage = () => {
     <Box sx={{ bgcolor: "background.default", minHeight: "100vh" }}>
       <Head>
         <title>Admin: Curated Sync | FLDb</title>
+        {/*
+          robots.txt only asks crawlers not to *fetch* this page; a URL that is merely
+          disallowed can still be indexed from external links, showing up as a bare result
+          with no snippet. `noindex` is what actually keeps the admin screen out of search.
+        */}
+        <meta name="robots" content="noindex, nofollow" key="robots" />
       </Head>
       <ResponsiveDrawer />
 
@@ -274,7 +280,7 @@ const SyncPage = () => {
           <Box display="flex" alignItems="center" justifyContent="space-between" mb={3} sx={{ flexDirection: { xs: "column", sm: "row" }, gap: 2, textAlign: { xs: "center", sm: "left" } }}>
             <Box display="flex" alignItems="center" gap={2}>
               <CloudDownloadIcon color="primary" sx={{ fontSize: 40 }} />
-              <Typography variant="h4" fontWeight="bold">Curated Sync</Typography>
+              <Typography variant="h4" component="h1" fontWeight="bold">Curated Sync</Typography>
             </Box>
             {videos.length > 0 && (
               <Chip 

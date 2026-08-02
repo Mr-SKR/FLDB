@@ -4,6 +4,20 @@ import Place from "../../models/Place";
 import { serializeDocuments } from "../../utils/serialize";
 import { logger } from "../../lib/logger";
 import { PAGE_SIZE } from "../../config/constants";
+import { rateLimit, getClientKey } from "../../lib/rateLimit";
+
+/**
+ * Per-IP budget for the public search endpoint.
+ *
+ * Generous relative to real use — a debounced search is one request, and infinite scroll
+ * adds one per page — but it caps the one endpoint an anonymous caller can drive. With
+ * coordinates present the query is an unindexed aggregation that scans every place and
+ * sorts in memory, so unbounded concurrency is the realistic availability risk here.
+ *
+ * Same caveat as lib/rateLimit.ts: this is per-instance and best-effort on serverless.
+ */
+const SEARCH_LIMIT = 60;
+const SEARCH_WINDOW_MS = 60_000;
 
 export default async function handler(
   req: NextApiRequest,
@@ -11,6 +25,14 @@ export default async function handler(
 ) {
   if (req.method !== "GET") {
     return res.status(405).json({ message: "Method not allowed" });
+  }
+
+  const clientKey = getClientKey(req);
+  const limited = rateLimit(`search:${clientKey}`, SEARCH_LIMIT, SEARCH_WINDOW_MS);
+  if (!limited.allowed) {
+    logger.warn("Rate limit exceeded on search API", "searchAPI", { ip: clientKey });
+    res.setHeader("Retry-After", String(limited.retryAfterSeconds));
+    return res.status(429).json({ message: "Too many requests" });
   }
 
   const { q, veg, page, limit, lat, lng } = req.query;

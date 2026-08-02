@@ -18,6 +18,12 @@ export const usePlaceFilters = (initialData: PlaceInterface[], userLocation: Use
   const [isHydrated, setIsHydrated] = useState(false);
 
   const isFirstRender = useRef(true);
+  /**
+   * Monotonic id of the most recently issued fetch. Responses that are not the latest are
+   * discarded: the debounce makes overlapping requests unlikely but not impossible, and a
+   * slow early response landing after a fast later one would otherwise paint stale results.
+   */
+  const requestIdRef = useRef(0);
 
   // Depend on the coordinates themselves rather than the location object. A new object
   // identity with unchanged coordinates must never trigger a refetch — that would
@@ -64,6 +70,8 @@ export const usePlaceFilters = (initialData: PlaceInterface[], userLocation: Use
   }, [hasVeg, isHydrated]);
 
   const fetchPlaces = useCallback(async (pageNum: number, search: string, veg: boolean, append: boolean = false) => {
+    const requestId = ++requestIdRef.current;
+
     // Determine loading state
     if (pageNum === 1) {
       if (isFirstRender.current) setIsInitialLoading(true);
@@ -81,6 +89,9 @@ export const usePlaceFilters = (initialData: PlaceInterface[], userLocation: Use
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
+        // A newer request has been issued since this one started; its results are the
+        // ones the user is waiting for, so drop these rather than overwrite them.
+        if (requestId !== requestIdRef.current) return;
         if (append) {
           setPlaces(prev => [...prev, ...data]);
         } else {
@@ -91,9 +102,13 @@ export const usePlaceFilters = (initialData: PlaceInterface[], userLocation: Use
     } catch (err) {
       logger.error("Fetch failed", "usePlaceFilters", err);
     } finally {
-      setIsInitialLoading(false);
-      setIsSearching(false);
-      setIsLoadingMore(false);
+      // Only the newest request owns the loading flags — a superseded one clearing them
+      // would hide the spinner while its replacement is still in flight.
+      if (requestId === requestIdRef.current) {
+        setIsInitialLoading(false);
+        setIsSearching(false);
+        setIsLoadingMore(false);
+      }
       isFirstRender.current = false;
     }
   }, [lat, lng]);
@@ -125,12 +140,31 @@ export const usePlaceFilters = (initialData: PlaceInterface[], userLocation: Use
     fetchPlaces(1, debouncedSearch, hasVeg, false);
   }, [debouncedSearch, hasVeg, lat, lng, fetchPlaces, isHydrated]);
 
+  /**
+   * Clears every active filter.
+   *
+   * `debouncedSearch` is reset alongside `searchValue` so the refetch fires immediately
+   * rather than after the 500ms typing debounce. The sessionStorage sync effects above
+   * pick these up, which is what makes the reset survive — the empty state previously
+   * called `window.location.reload()`, and the reloaded page simply restored the same
+   * filters from sessionStorage and landed the user right back on the empty state.
+   */
+  const resetFilters = useCallback(() => {
+    setSearchValue("");
+    setDebouncedSearch("");
+    setHasVeg(false);
+  }, []);
+
   const loadMore = useCallback(() => {
     if (!hasMore || isLoadingMore || isSearching || isInitialLoading) return;
     const nextPage = page + 1;
     setPage(nextPage);
-    fetchPlaces(nextPage, searchValue, hasVeg, true);
-  }, [hasMore, isLoadingMore, isSearching, isInitialLoading, page, searchValue, hasVeg, fetchPlaces]);
+    // Must be the settled query, not the raw input: page 1 was fetched with
+    // `debouncedSearch`, so paging with `searchValue` would append results for a
+    // different query to the list already on screen whenever the user scrolls
+    // within the 500ms debounce window.
+    fetchPlaces(nextPage, debouncedSearch, hasVeg, true);
+  }, [hasMore, isLoadingMore, isSearching, isInitialLoading, page, debouncedSearch, hasVeg, fetchPlaces]);
 
   const filteredPlaces = useMemo(() => {
     let result = [...places];
@@ -177,5 +211,6 @@ export const usePlaceFilters = (initialData: PlaceInterface[], userLocation: Use
     isInitialLoading,
     hasMore,
     loadMore,
+    resetFilters,
   };
 };

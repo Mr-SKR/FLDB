@@ -61,7 +61,9 @@ export const LocationPrompt: React.FC<LocationPromptProps> = ({
           >
             <MyLocationIcon sx={{ fontSize: 32 }} />
           </Box>
-          <Typography variant="h5" sx={{ fontWeight: "bold" }}>
+          {/* DialogTitle already renders the heading element; this is only its text, so
+              it must not introduce a second heading nested inside it. */}
+          <Typography variant="h5" component="span" sx={{ fontWeight: "bold" }}>
             Enable Location
           </Typography>
         </Box>

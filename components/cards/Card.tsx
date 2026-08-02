@@ -8,6 +8,7 @@ import {
   Stack,
 } from "@mui/material";
 import Image from "next/image";
+import NextLink from "next/link";
 import { useRouter } from "next/router";
 import {
   Restaurant as RestaurantIcon,
@@ -27,7 +28,7 @@ interface FoodCardProps {
   useLocation: boolean;
   index: number;
   setUseLocation: (force?: boolean) => Promise<boolean>;
-  rating?: number | string;
+  rating?: number;
   url?: string;
   /** Google's html_attributions for the place photo; required to be displayed. */
   photoAttribution?: string[];
@@ -61,7 +62,7 @@ export default function FoodCard(props: FoodCardProps): React.ReactElement {
   // limits are hit, so a broken place photo must degrade to the YouTube thumbnail (served
   // free from i.ytimg.com) rather than leaving an empty card.
   const [failedUrls, setFailedUrls] = useState<string[]>([]);
-  const ratingValue = typeof props.rating === "string" ? parseFloat(props.rating) : props.rating;
+  const ratingValue = props.rating;
 
   // Empty URLs must never reach next/image (it throws on src=""), so filter them out here
   // and fall back to rendering a plain background when a place has no usable image.
@@ -289,17 +290,36 @@ export default function FoodCard(props: FoodCardProps): React.ReactElement {
           textAlign: "left",
         }}
       >
+        {/*
+          A real anchor, not just the card's click handler.
+          - Keyboard and screen-reader users can reach the place page at all; the card
+            itself is a div whose onClick they can never trigger.
+          - Crawlers get a followable href. Without it the only route to any place page is
+            the sitemap, since nothing else on the home feed links out.
+          - next/link prefetches on hover, so the navigation is warm.
+          Only the title is the link: wrapping the whole card would nest the Directions
+          anchor inside another anchor, which is invalid HTML. handleCardClick already
+          bails on `target.closest("a")`, so clicking the title navigates exactly once.
+        */}
+        {/* h2 under the page's single h1: each card is one item in the feed listing. */}
         <Typography
+          component="h2"
           variant="h4"
           sx={{
             fontWeight: "bold",
+            m: 0,
             mb: 0.5,
             textShadow: "0 2px 4px rgba(0,0,0,0.5)",
             fontSize: { xs: "1.75rem", sm: "2.25rem" },
             lineHeight: 1.2,
           }}
         >
-          {props.title}
+          <NextLink
+            href={`/place/${props.slug}`}
+            style={{ color: "inherit", textDecoration: "none" }}
+          >
+            {props.title}
+          </NextLink>
         </Typography>
 
         {ratingValue && (

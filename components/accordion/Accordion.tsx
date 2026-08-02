@@ -25,7 +25,11 @@ export default function CustomAccordion(
           expandIcon={<ExpandMoreIcon />}
           id={`${props.qid}-accordion`}
         >
-          <Typography>{props.title}</Typography>
+          {/* Each FAQ question is a section heading under the page h1, which gives the
+              About page a real outline instead of a flat run of paragraphs. */}
+          <Typography component="h2" variant="body1" sx={{ fontWeight: 600 }}>
+            {props.title}
+          </Typography>
         </AccordionSummary>
         <AccordionDetails>
           <Linkify tagName="p">

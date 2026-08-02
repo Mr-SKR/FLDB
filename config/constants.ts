@@ -18,3 +18,22 @@ export const LOCATION_MAX_SILENT_FAILURES = 3;
  * back to this; it is deliberately a plain string so it is also safe in client bundles.
  */
 export const SITE_URL = "https://foodloversdatabase.com";
+
+/** Full brand name. Used in titles, JSON-LD and `og:site_name`. */
+export const SITE_NAME = "Food Lovers Database";
+
+/** Short brand name, used as the title suffix so titles stay under the SERP width. */
+export const SITE_SHORT_NAME = "FLDb";
+
+/**
+ * Default meta description, used for pages that do not supply their own.
+ * Kept under ~160 characters so search engines show it whole rather than truncating.
+ */
+export const SITE_DESCRIPTION =
+  "Discover restaurants featured by India's best food vloggers. Search hundreds of reviewed " +
+  "places, sort by what's nearest to you, and get directions in one tap.";
+
+export const SITE_LOCALE = "en_IN";
+
+/** How many nearby places to cross-link from a place page. */
+export const NEARBY_PLACES_COUNT = 6;

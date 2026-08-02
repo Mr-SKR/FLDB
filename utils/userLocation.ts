@@ -20,12 +20,6 @@ const geoSettingsPrecise: PositionOptions = {
   maximumAge: 0,
 };
 
-const getLocationPermissionState = async (): Promise<string> => {
-  const result = await navigator.permissions.query({ name: "geolocation" });
-  // result.state can be "granted" or "prompt" or "denied"
-  return result.state;
-};
-
 const getPosition = (options: PositionOptions): Promise<GeolocationPosition> =>
   new Promise((resolve, reject) =>
     navigator.geolocation.getCurrentPosition(resolve, reject, options)
@@ -53,4 +47,4 @@ const getAccurateLocation = async (precise = false): Promise<GeolocationPosition
   }
 };
 
-export { getLocationPermissionState, getAccurateLocation };
+export { getAccurateLocation };

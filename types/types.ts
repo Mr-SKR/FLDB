@@ -5,6 +5,11 @@ export interface VideoInterface {
   videoDescription?: string;
   channelId?: string;
   channelTitle?: string;
+  /**
+   * YouTube publish timestamp. Required by schema.org `VideoObject` (`uploadDate`), which
+   * is why it is captured — it comes free in the snippet the sync already requests.
+   */
+  publishedAt?: string | Date;
   thumbnail?: {
     small?: string;
     large?: string;
@@ -28,7 +33,12 @@ export interface PlaceInterface {
     };
   };
   international_phone_number?: string;
-  rating?: string | number;
+  rating?: number;
+  /**
+   * Number of Google reviews behind `rating`. Captured because schema.org `AggregateRating`
+   * is invalid without a count — the rating alone cannot be marked up.
+   */
+  user_ratings_total?: number;
   url?: string; // Google Maps URL
   opening_hours?: {
     open_now?: boolean;

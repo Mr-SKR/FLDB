@@ -30,6 +30,9 @@ export const fetchLocationDetails = async (description: string) => {
     "international_phone_number",
     "place_id",
     "rating",
+    // Same Atmosphere billing tier as `rating`, which is already requested, so this costs
+    // nothing extra. Needed to emit a valid schema.org AggregateRating.
+    "user_ratings_total",
     "url",
     "opening_hours",
     "photos",

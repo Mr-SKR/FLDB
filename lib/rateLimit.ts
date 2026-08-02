@@ -46,10 +46,41 @@ export const rateLimit = (key: string, limit: number, windowMs: number): RateLim
   return { allowed: true, retryAfterSeconds: 0 };
 };
 
-/** Identifies the caller for rate-limiting purposes. */
+const firstHeaderValue = (value: string | string[] | undefined): string | undefined => {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return raw?.trim() || undefined;
+};
+
+/**
+ * Identifies the caller for rate-limiting purposes.
+ *
+ * Deliberately does NOT read the first entry of `x-forwarded-for`. That entry is whatever
+ * the client sent: any hop that appends rather than replaces the header leaves it fully
+ * attacker-controlled, so keying on it lets a caller rotate a spoofed value and bypass the
+ * limiter entirely — including the pre-auth budget that is the only thing making
+ * `SYNC_SECRET` expensive to brute-force.
+ *
+ * Preference order, most trustworthy first:
+ *  1. `x-vercel-forwarded-for` / `x-real-ip` — set by the platform edge, which overwrites
+ *     any client-supplied value.
+ *  2. The LAST entry of `x-forwarded-for` — appended by the closest trusted proxy. A client
+ *     can prepend entries but cannot append past the proxy that adds its own.
+ *  3. The socket address, for local development where no proxy is involved.
+ *
+ * NOTE the deployment assumption: (1) is only trustworthy because Vercel's edge rewrites
+ * those headers. If this app is ever served directly to the internet without such a proxy,
+ * every header here becomes client-controlled again and only `req.socket.remoteAddress` is
+ * meaningful — this function would need to drop straight to it.
+ */
 export const getClientKey = (req: NextApiRequest): string => {
-  const forwarded = req.headers["x-forwarded-for"];
-  const raw = Array.isArray(forwarded) ? forwarded[0] : forwarded;
-  // x-forwarded-for is a comma-separated chain; the client is the first entry.
-  return raw?.split(",")[0].trim() || req.socket.remoteAddress || "unknown";
+  const platformIp =
+    firstHeaderValue(req.headers["x-vercel-forwarded-for"]) ??
+    firstHeaderValue(req.headers["x-real-ip"]);
+  if (platformIp) return platformIp;
+
+  const forwarded = firstHeaderValue(req.headers["x-forwarded-for"]);
+  const chain = forwarded?.split(",").map((entry) => entry.trim()).filter(Boolean) ?? [];
+  const nearestHop = chain[chain.length - 1];
+
+  return nearestHop || req.socket.remoteAddress || "unknown";
 };

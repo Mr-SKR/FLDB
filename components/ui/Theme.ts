@@ -86,15 +86,25 @@ export const theme = extendTheme({
     },
     MuiTypography: {
       defaultProps: {
+        /**
+         * Identity mapping: a variant selects the *visual* scale only, never the document
+         * outline. Where a heading level differs from its size, pass `component`.
+         *
+         * The previous mapping tied the two together (h5 rendered an `<h1>`, h6 an `<h2>`,
+         * subtitle1 an `<h5>`), which silently produced a broken outline: the place page
+         * emitted two `<h1>`s because "Comments & Discussion" is styled h5, the location
+         * dialog nested an `<h1>` inside MUI's own `<h2>`, and the home feed had no `<h1>`
+         * at all — only a run of `<h4>` card titles.
+         */
         variantMapping: {
           h1: "h1",
           h2: "h2",
           h3: "h3",
           h4: "h4",
-          h5: "h1",
-          h6: "h2",
-          subtitle1: "h5",
-          subtitle2: "h6",
+          h5: "h5",
+          h6: "h6",
+          subtitle1: "p",
+          subtitle2: "p",
           body1: "p",
           body2: "p",
         },

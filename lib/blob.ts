@@ -1,6 +1,5 @@
-import { put, del } from "@vercel/blob";
+import { put } from "@vercel/blob";
 import { env } from "./env";
-import { logger } from "./logger";
 
 /**
  * Blob storage seam.
@@ -47,15 +46,6 @@ export const uploadPlacePhoto = async (
   return { key, url: result.url };
 };
 
-export const deletePlacePhoto = async (url: string): Promise<void> => {
-  try {
-    await del(url, { token: env.BLOB_READ_WRITE_TOKEN });
-  } catch (err) {
-    // Deleting is best-effort cleanup; never fail a sync because of it.
-    logger.warn(`Failed to delete blob ${url}`, "blob", err);
-  }
-};
-
 /**
  * Builds the URL to render for a stored photo.
  *
@@ -65,9 +55,12 @@ export const deletePlacePhoto = async (url: string): Promise<void> => {
  */
 export const photoSrc = (
   photoUrl?: string | null,
-  version?: string | number | null
+  version?: string | number | Date | null
 ): string | undefined => {
   if (!photoUrl) return undefined;
   if (!version) return photoUrl;
-  return `${photoUrl}?v=${encodeURIComponent(String(version))}`;
+  // `photoUpdatedAt` is a Date on the model; collapse it to an epoch millisecond count
+  // so the token stays short and stable rather than a locale-formatted date string.
+  const token = version instanceof Date ? version.getTime() : version;
+  return `${photoUrl}?v=${encodeURIComponent(String(token))}`;
 };

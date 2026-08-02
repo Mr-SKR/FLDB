@@ -75,14 +75,32 @@ export const FilterSection: React.FC<FilterSectionProps> = ({
 
         {/* Filters Row */}
         <Box sx={{ display: "flex", gap: 1 }}>
+          {/* Styled as a card but exposed as a switch: without these it is an unlabelled
+              div, so its on/off state is invisible to screen readers and it cannot be
+              reached or activated from the keyboard at all. */}
           <Paper
             elevation={0}
             onClick={() => setHasVeg(!hasVeg)}
+            role="switch"
+            aria-checked={hasVeg}
+            aria-label="Veg friendly only"
+            tabIndex={0}
+            onKeyDown={(e: React.KeyboardEvent) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setHasVeg(!hasVeg);
+              }
+            }}
             sx={{
               flex: 1,
               p: 1.5,
               borderRadius: "16px",
               cursor: "pointer",
+              "&:focus-visible": {
+                outline: "3px solid",
+                outlineColor: "primary.main",
+                outlineOffset: "2px",
+              },
               border: "1px solid",
               borderColor: hasVeg ? "success.main" : "divider",
               bgcolor: hasVeg ? alpha("#4caf50", 0.1) : "background.default",
@@ -149,9 +167,10 @@ export const FilterSection: React.FC<FilterSectionProps> = ({
                     Last updated: {new Date(userLocation.lastUpdated).toLocaleTimeString()}
                   </Typography>
                 </Box>
-                <IconButton 
-                  size="small" 
+                <IconButton
+                  size="small"
                   onClick={refreshLocation}
+                  aria-label="Refresh my location"
                   sx={{ bgcolor: "action.hover" }}
                 >
                   <RotateLeftIcon fontSize="small" />

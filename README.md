@@ -128,6 +128,14 @@ All sync requests must be authorized using the `SYNC_SECRET` defined in your env
 - **Header:** `Authorization: Bearer YOUR_SYNC_SECRET`
 - The secret is compared in constant time, and the endpoint is rate limited per IP (both before and after authentication). Note that the limiter is in-memory, so on serverless platforms it is per-instance and best-effort — use Vercel Firewall rules or an external counter if you need a hard global limit.
 
+The public `/api/search` endpoint is rate limited on the same mechanism (60 requests per minute
+per IP), which is far above real use — a debounced search is one request and infinite scroll
+adds one per page — but bounds the only endpoint an anonymous caller can drive.
+
+Client IPs are resolved from `x-vercel-forwarded-for` / `x-real-ip`, falling back to the *last*
+entry of `x-forwarded-for`. The first entry is deliberately not used: it is whatever the client
+sent, so keying on it would let a caller bypass the limiter with a spoofed header.
+
 ### 🔁 Methods
 
 Read-only actions (`list`, `get-sources`) accept `GET`. The `sync` action mutates state and **requires `POST`**.

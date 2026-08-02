@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Typography, CircularProgress } from "@mui/material";
+import { Box, Typography, CircularProgress, Button } from "@mui/material";
 import Image from "next/image";
 import FoodCard from "../cards/Card";
 import { PlaceInterface } from "../../types/types";
@@ -13,6 +13,7 @@ interface FeedViewerProps {
   isSearching: boolean;
   observerTarget: React.RefObject<HTMLDivElement | null>;
   containerRef?: React.RefObject<HTMLDivElement | null>;
+  onClearFilters: () => void;
 }
 
 export const FeedViewer: React.FC<FeedViewerProps> = ({
@@ -23,6 +24,7 @@ export const FeedViewer: React.FC<FeedViewerProps> = ({
   isSearching,
   observerTarget,
   containerRef,
+  onClearFilters,
 }) => {
   return (
     <Box 
@@ -84,24 +86,27 @@ export const FeedViewer: React.FC<FeedViewerProps> = ({
                unoptimized
              />
           </Box>
-          <Typography variant="h5" sx={{ fontWeight: 800, mb: 1, letterSpacing: "-0.5px" }}>
+          <Typography variant="h5" component="h2" sx={{ fontWeight: 800, mb: 1, letterSpacing: "-0.5px" }}>
             Nothing on the menu?
           </Typography>
           <Typography variant="body1" sx={{ opacity: 0.6, maxWidth: "260px", mx: "auto", mb: 4 }}>
             We couldn&apos;t find any restaurants matching your current filters.
           </Typography>
-          <Typography 
-            variant="button" 
-            sx={{ 
-              color: "primary.main", 
+          {/* A real button rather than a clickable Typography: this is keyboard-focusable
+              and announced as a control. It resets the filter state directly — the previous
+              `window.location.reload()` did nothing useful, since the filters are persisted
+              in sessionStorage and were simply restored on the way back up. */}
+          <Button
+            variant="text"
+            onClick={onClearFilters}
+            sx={{
+              color: "primary.main",
               fontWeight: 700,
-              cursor: "pointer",
-              "&:hover": { textDecoration: "underline" }
+              "&:hover": { textDecoration: "underline", bgcolor: "transparent" },
             }}
-            onClick={() => window.location.reload()}
           >
             Clear all filters
-          </Typography>
+          </Button>
         </Box>
       )}
       {/* Infinite Scroll Sentinel */}

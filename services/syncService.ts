@@ -11,7 +11,7 @@ import { env } from "../lib/env";
 import { logger } from "../lib/logger";
 import { PlaceInterface, VideoInterface } from "../types/types";
 import { sleep } from "../utils/sleep";
-import { uploadPlacePhoto, StoredPhoto } from "../lib/blob";
+import { uploadPlacePhoto, photoSrc, StoredPhoto } from "../lib/blob";
 
 const youtube: youtube_v3.Youtube = google.youtube("v3");
 const googleMapsClient = new Client({});
@@ -108,8 +108,14 @@ const updatePlaceSearchContent = async (place: PlaceInterface) => {
 
   // 1. Place photo, preferring the blob URL and falling back to the legacy base64 so the
   //    site keeps rendering for places the backfill has not reached yet.
+  //
+  //    The blob URL carries a `?v=<photoUpdatedAt>` token. Blob keys are stable and the
+  //    bytes are uploaded with a one-year immutable cache, so without this token a re-synced
+  //    photo would never reach anyone: both the browser and Vercel's image cache would keep
+  //    serving the previous image at the same URL. Callers must therefore set
+  //    `photoUpdatedAt` before invoking this function — both the sync and backfill paths do.
   const placePhoto =
-    place.photoUrl ||
+    photoSrc(place.photoUrl, place.photoUpdatedAt) ||
     (place.placePhotoBase64 && place.placePhotoBase64 !== "none"
       ? place.placePhotoBase64
       : undefined);
@@ -306,6 +312,7 @@ export const syncSingleVideo = async (videoId: string, mode: "soft" | "hard" = "
       videoDescription: video.snippet.description || undefined,
       channelId: video.snippet.channelId || undefined,
       channelTitle: video.snippet.channelTitle || undefined,
+      publishedAt: video.snippet.publishedAt || undefined,
       thumbnail: {
         small: video.snippet.thumbnails?.medium?.url || undefined,
         // Highest available, in descending order. `standard` (640x480) was previously
@@ -325,12 +332,20 @@ export const syncSingleVideo = async (videoId: string, mode: "soft" | "hard" = "
     const locations = await fetchLocationDetails(video.snippet.description);
     logger.info(`Locations found for ${videoId}: ${locations.length}`, "syncService");
 
+    // Record the video before deciding whether it yielded any places.
+    //
+    // A video whose description carries no resolvable Maps link has still been fully
+    // processed, and persisting it is what makes this idempotent: previously the early
+    // return below happened first, so such a video was never written, stayed permanently
+    // `isSynced: false` in the /sync UI, and burned a fresh YouTube quota unit plus the
+    // redirect-tracing and Places lookups on every subsequent "Sync Current Page".
+    // If a description later gains a Maps link, a hard sync picks it up.
+    await Video.findOneAndUpdate({ videoId: video.id }, videoData, { upsert: true });
+
     if (locations.length === 0) {
       logger.info(`SKIPPED: No locations found for video ${videoId}`, "syncService");
       return { status: "skipped", message: "No locations found" };
     }
-
-    await Video.findOneAndUpdate({ videoId: video.id }, videoData, { upsert: true });
 
     for (const loc of locations) {
       if (!loc.place_id) {
@@ -373,6 +388,7 @@ export const syncSingleVideo = async (videoId: string, mode: "soft" | "hard" = "
           geometry: loc.geometry as PlaceInterface["geometry"],
           international_phone_number: loc.international_phone_number,
           rating: loc.rating,
+          user_ratings_total: loc.user_ratings_total,
           url: loc.url,
           opening_hours: loc.opening_hours as PlaceInterface["opening_hours"],
           business_status: loc.business_status,
@@ -576,22 +592,4 @@ export const cleanupPlacePhotoBlobs = async () => {
   );
 
   return { cleared: result.modifiedCount, remainingWithBase64 };
-};
-
-export const syncDatabase = async (mode: "soft" | "hard" = "soft") => {
-    logger.info(`Starting full database sync in ${mode} mode`, "syncService");
-    const { videos } = await getPlaylistVideos();
-    let count = 0;
-    for (const v of videos) {
-        if (v.videoId) {
-          try {
-            await syncSingleVideo(v.videoId, mode, v.isVeg);
-            count++;
-          } catch (err) {
-            logger.error(`Failed to sync video during full sync: ${v.videoId}`, "syncService", err);
-          }
-        }
-    }
-    logger.info(`Full sync complete. Processed ${count} videos`, "syncService");
-    return { success: true, processedCount: count };
 };

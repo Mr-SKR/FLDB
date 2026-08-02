@@ -16,7 +16,11 @@ const PlaceSchema = new Schema<PlaceInterface>({
     },
   },
   international_phone_number: String,
-  rating: Schema.Types.Mixed,
+  // Google always returns a numeric rating, and every stored document is already a
+  // double or int — `Mixed` only removed the cast that would keep it that way.
+  rating: Number,
+  /** Google review count. Needed to emit a valid schema.org AggregateRating. */
+  user_ratings_total: Number,
   url: String,
   opening_hours: {
     open_now: Boolean,

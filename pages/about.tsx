@@ -1,11 +1,19 @@
 import React from "react";
-import { Box, Grid, Container, Button } from "@mui/material";
-import Head from "next/head";
+import { Box, Grid, Container, Button, Typography } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useRouter } from "next/router";
 
 import ResponsiveDrawer from "../components/headers/Header";
 import CustomAccordion from "../components/accordion/Accordion";
+import { Seo } from "../components/seo/Seo";
+import { JsonLd } from "../components/seo/JsonLd";
+import {
+  absoluteUrl,
+  buildFaqJsonLd,
+  getSiteUrl,
+  JsonLd as JsonLdType,
+} from "../lib/seo";
+import { SITE_NAME, SITE_SHORT_NAME } from "../config/constants";
 
 const faqs = [
   {
@@ -106,19 +114,27 @@ const faqs = [
   },
 ];
 
-function About(): React.ReactElement {
+interface AboutProps {
+  canonical: string;
+  jsonLd: JsonLdType;
+}
+
+function About({ canonical, jsonLd }: AboutProps): React.ReactElement {
   const router = useRouter();
 
   return (
     <React.Fragment>
-      <Head>
-        <title>About FLDb</title>
-        <meta
-          name="description"
-          content="About Food Lovers Database (FLDb)"
-          key="description"
-        />
-      </Head>
+      <Seo
+        title={`About ${SITE_SHORT_NAME} — How Food Lovers Database Works`}
+        description={
+          `How ${SITE_NAME} turns food vlogs into a searchable restaurant directory: where the ` +
+          `data comes from, how distances are calculated, and why the site is free and ad-free.`
+        }
+        canonical={canonical}
+      />
+      {/* The page is a genuine question-and-answer document, which is exactly what FAQPage
+          markup describes — and it is the one page here eligible for FAQ rich results. */}
+      <JsonLd data={jsonLd} />
       <ResponsiveDrawer showAbout={false} showThemeToggle={false} />
       <Container maxWidth="md" sx={{ mt: 3, mb: 4 }}>
         <Button
@@ -128,6 +144,19 @@ function About(): React.ReactElement {
         >
           Back to Home
         </Button>
+
+        {/* This page had no h1 at all — only a flat list of accordion questions. */}
+        <Typography
+          variant="h4"
+          component="h1"
+          sx={{ fontWeight: 800, mb: 1, letterSpacing: -0.5 }}
+        >
+          About {SITE_NAME}
+        </Typography>
+        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+          Frequently asked questions about {SITE_SHORT_NAME}, the data behind it, and how it
+          is built.
+        </Typography>
         <Box
           sx={{
             justfyContent: "center",
@@ -153,4 +182,14 @@ function About(): React.ReactElement {
     </React.Fragment>
   );
 }
+export const getStaticProps = async () => {
+  const siteUrl = getSiteUrl();
+  return {
+    props: {
+      canonical: absoluteUrl(siteUrl, "/about"),
+      jsonLd: buildFaqJsonLd(faqs),
+    },
+  };
+};
+
 export default About;
