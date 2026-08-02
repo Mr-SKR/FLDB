@@ -37,3 +37,6 @@ public-old/
 
 # TypeScript build output
 /output
+
+# Next.js generated types (path flips between dev/build; regenerated automatically)
+next-env.d.ts
