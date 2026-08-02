@@ -11,7 +11,7 @@ const isValidUrl = (url: string) => {
   try {
     new URL(url);
     return true;
-  } catch (e) {
+  } catch {
     return false;
   }
 };
@@ -46,7 +46,7 @@ export const fetchLocationDetails = async (description: string) => {
             logger.debug(`Extracting target from YouTube redirect: ${q}`, "locationDetails");
             url = q;
           }
-        } catch (e) {
+        } catch {
           logger.warn(`Failed to parse YouTube redirect URL: ${url}`, "locationDetails");
         }
       }

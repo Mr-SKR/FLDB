@@ -1,12 +1,13 @@
 import type { NextApiResponse } from "next";
 import { getAllPlaceSlugs } from "../services/placeService";
+import { SITE_URL } from "../config/constants";
 
 const Sitemap = () => {
   return null;
 };
 
 export const getServerSideProps = async ({ res }: { res: NextApiResponse }) => {
-  const BASE_URL = process.env.HOST || "https://foodloversdatabase.com";
+  const BASE_URL = process.env.HOST || SITE_URL;
 
   // Static pages get lower priority
   const staticPaths = ["", "about"].map((staticPagePath) => {

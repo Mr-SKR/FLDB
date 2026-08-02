@@ -1,37 +1,16 @@
-import React, { createContext, useMemo, useState, useEffect } from "react";
-import { ThemeProvider, createTheme } from "@mui/material/styles";
+import React, { useState, useEffect } from "react";
+import { Experimental_CssVarsProvider as CssVarsProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import type { AppProps } from "next/app";
 import HEAD from "next/head";
-import { PaletteMode } from "@mui/material";
 import { useRouter } from "next/router";
 
-import { getDesignTokens } from "../components/ui/Theme";
+import theme from "../components/ui/Theme";
 import { LoadingScreen } from "../components/ui/LoadingScreen";
 
-export const ColorModeContext = createContext({ toggleColorMode: () => {
-  // Default implementation
-} });
-
 function MyApp({ Component, pageProps }: AppProps) {
-  const [mode, setMode] = useState<PaletteMode>("light");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-
-  // Persist theme choice in localStorage
-  useEffect(() => {
-    const savedMode = localStorage.getItem("colorMode") as PaletteMode;
-    const systemMode = window.matchMedia("(prefers-color-scheme: dark)").matches
-      ? "dark"
-      : "light";
-    const modeToSet = savedMode || systemMode;
-
-    if (modeToSet !== mode) {
-      queueMicrotask(() => {
-        setMode(modeToSet);
-      });
-    }
-  }, [mode]);
 
   // Router loading state
   useEffect(() => {
@@ -53,23 +32,8 @@ function MyApp({ Component, pageProps }: AppProps) {
     };
   }, [router]);
 
-  const colorMode = useMemo(
-    () => ({
-      toggleColorMode: () => {
-        setMode((prevMode) => {
-          const newMode = prevMode === "light" ? "dark" : "light";
-          localStorage.setItem("colorMode", newMode);
-          return newMode;
-        });
-      },
-    }),
-    []
-  );
-
-  const theme = useMemo(() => createTheme(getDesignTokens(mode)), [mode]);
-
   return (
-    <ColorModeContext.Provider value={colorMode}>
+    <>
       <HEAD>
         <title>FLDB: Food Lovers Database</title>
         <meta charSet="utf-8" />
@@ -79,14 +43,15 @@ function MyApp({ Component, pageProps }: AppProps) {
           key="description"
         />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="viewport" content="initial-scale=1.0, width=device-width" />
       </HEAD>
-      <ThemeProvider theme={theme}>
+      {/* defaultMode="system" honours the OS preference until the user picks one;
+          the choice is persisted by MUI and replayed pre-paint by InitColorSchemeScript. */}
+      <CssVarsProvider theme={theme} defaultMode="system">
         <CssBaseline />
         {loading && <LoadingScreen />}
         <Component {...pageProps} />
-      </ThemeProvider>
-    </ColorModeContext.Provider>
+      </CssVarsProvider>
+    </>
   );
 }
 

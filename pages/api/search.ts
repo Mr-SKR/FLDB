@@ -18,9 +18,16 @@ export default async function handler(
   
   let pageNum = parseInt(page as string) || 1;
   let limitNum = parseInt(limit as string) || PAGE_SIZE;
-  const latNum = lat ? parseFloat(lat as string) : null;
-  const lngNum = lng ? parseFloat(lng as string) : null;
-  
+
+  // Parse coordinates without treating a legitimate 0 as "absent".
+  const latNum = typeof lat === "string" ? parseFloat(lat) : NaN;
+  const lngNum = typeof lng === "string" ? parseFloat(lng) : NaN;
+  const hasCoords =
+    Number.isFinite(latNum) &&
+    Number.isFinite(lngNum) &&
+    Math.abs(latNum) <= 90 &&
+    Math.abs(lngNum) <= 180;
+
   // Security: Bound parameters to prevent DoS
   if (pageNum < 1) pageNum = 1;
   if (limitNum < 1) limitNum = PAGE_SIZE;
@@ -44,7 +51,10 @@ export default async function handler(
       allThumbnails: 1,
       formatted_address: 1,
       rating: 1,
-      url: 1
+      url: 1,
+      photoUrl: 1,
+      photoUpdatedAt: 1,
+      photoAttribution: 1
     };
 
     if (q && typeof q === "string") {
@@ -94,6 +104,9 @@ export default async function handler(
             formatted_address: 1,
             rating: 1,
             url: 1,
+            photoUrl: 1,
+            photoUpdatedAt: 1,
+            photoAttribution: 1,
             score: { $meta: "searchScore" },
           },
         },
@@ -106,8 +119,19 @@ export default async function handler(
       if (isVegOnly) filter.hasVeg = true;
 
       let results;
-      if (latNum && lngNum) {
-        // Sort by distance using aggregation
+      if (hasCoords) {
+        // Approximate planar distance, good enough for ranking nearby results.
+        //
+        // A degree of longitude is shorter than a degree of latitude by cos(latitude), so
+        // comparing raw degree deltas overweights longitude (~3% at Bengaluru's latitude)
+        // and can rank results differently from the Haversine distance the client shows.
+        // Scaling by cos(latitude) keeps server ordering consistent with the displayed km.
+        //
+        // The proper fix is a `2dsphere` index on `geometry.location` plus a `$geoNear`
+        // stage, which would also make this indexed rather than a collection scan. That
+        // requires creating the index on the cluster first — see README.
+        const lngScale = Math.cos((latNum * Math.PI) / 180);
+
         results = await Place.aggregate([
           { $match: filter },
           {
@@ -116,7 +140,17 @@ export default async function handler(
                 $sqrt: {
                   $add: [
                     { $pow: [{ $subtract: ["$geometry.location.lat", latNum] }, 2] },
-                    { $pow: [{ $subtract: ["$geometry.location.lng", lngNum] }, 2] }
+                    {
+                      $pow: [
+                        {
+                          $multiply: [
+                            { $subtract: ["$geometry.location.lng", lngNum] },
+                            lngScale
+                          ]
+                        },
+                        2
+                      ]
+                    }
                   ]
                 }
               }
@@ -138,7 +172,8 @@ export default async function handler(
       return res.status(200).json(serializeDocuments(results));
     }
   } catch (error) {
+    // Log the detail; never return driver/internal messages to the caller.
     logger.error("Search API error", "searchAPI", error);
-    return res.status(500).json({ message: "Search failed", error: (error as Error).message });
+    return res.status(500).json({ message: "Search failed" });
   }
 }

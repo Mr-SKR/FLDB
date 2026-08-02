@@ -1,4 +1,4 @@
-import mongoose, { Schema, model, models } from 'mongoose';
+import { Schema, model, models } from 'mongoose';
 import { PlaceInterface } from '../types/types';
 
 const PlaceSchema = new Schema<PlaceInterface>({
@@ -30,7 +30,19 @@ const PlaceSchema = new Schema<PlaceInterface>({
     large: String,
   },
   placePhotoReference: String,
+  /**
+   * DEPRECATED: legacy base64 data URL. Retained only so the site keeps rendering while
+   * the blob backfill runs; unset by the `cleanup-photo-blobs` sync action once verified.
+   */
   placePhotoBase64: String,
+  /** Stable blob path, e.g. "places/<place_id>.webp". Survives a provider change. */
+  photoKey: String,
+  /** Public URL of the stored photo — what the frontend renders. */
+  photoUrl: String,
+  /** Bumped when the photo bytes change; used purely to bust caches. */
+  photoUpdatedAt: Date,
+  /** Google requires photo attributions to be displayed alongside the image. */
+  photoAttribution: [String],
   allThumbnails: [{
     small: String,
     large: String,

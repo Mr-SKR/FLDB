@@ -6,15 +6,15 @@ import {
   InfoOutlined as InfoOutlinedIcon,
 } from "@mui/icons-material";
 import { useRouter } from "next/router";
-import { useTheme } from "@mui/material/styles";
+import { useColorScheme } from "@mui/material/styles";
 
-interface MobileControlsProps {
-  onToggleColorMode: () => void;
-}
-
-export const MobileControls: React.FC<MobileControlsProps> = ({ onToggleColorMode }) => {
+export const MobileControls: React.FC = () => {
   const router = useRouter();
-  const theme = useTheme();
+  const { mode, systemMode, setMode } = useColorScheme();
+
+  // `mode` is "system" until the user picks explicitly, and undefined until mounted.
+  const resolvedMode = mode === "system" ? systemMode : mode;
+  const toggleColorMode = () => setMode(resolvedMode === "dark" ? "light" : "dark");
 
   return (
     <>
@@ -39,21 +39,21 @@ export const MobileControls: React.FC<MobileControlsProps> = ({ onToggleColorMod
 
       {/* Mobile Theme Toggle */}
       <IconButton
-        onClick={onToggleColorMode}
+        onClick={toggleColorMode}
         sx={{
           position: "fixed",
           top: 72,
           right: 16,
           zIndex: 110,
           bgcolor: "rgba(0,0,0,0.3)",
-          color: theme.palette.mode === "light" ? "#f1c40f" : "#bd93f9",
+          color: resolvedMode === "light" ? "#f1c40f" : "#bd93f9",
           backdropFilter: "blur(8px)",
           "&:hover": { bgcolor: "rgba(0,0,0,0.5)" },
           display: { xs: "flex", sm: "none" },
           boxShadow: "0 2px 8px rgba(0,0,0,0.5)",
         }}
       >
-        {theme.palette.mode === "light" ? <Brightness7Icon /> : <Brightness4Icon />}
+        {resolvedMode === "light" ? <Brightness7Icon /> : <Brightness4Icon />}
       </IconButton>
     </>
   );

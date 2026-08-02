@@ -29,16 +29,59 @@ interface FoodCardProps {
   setUseLocation: (force?: boolean) => Promise<boolean>;
   rating?: number | string;
   url?: string;
+  /** Google's html_attributions for the place photo; required to be displayed. */
+  photoAttribution?: string[];
 }
+
+/**
+ * YouTube thumbnails are already well-compressed JPEGs on Google's own CDN, which serves
+ * them for free. Routing them through Vercel's optimizer would spend a hard-capped resource
+ * (5,000 image transformations/month on Hobby, shared with the place photos) for very little
+ * gain, so they are rendered as-is. Place photos from blob storage stay optimised.
+ *
+ * Keyed on the host rather than the `source` field, since the single-thumbnail fallback
+ * path carries no source.
+ */
+const isYouTubeThumbnail = (url: string): boolean => url.includes("i.ytimg.com");
+
+/**
+ * Google returns attributions as HTML anchors. Render the text only — injecting third-party
+ * HTML into the page is not worth the XSS surface for a credit line.
+ */
+const attributionText = (attributions?: string[]): string =>
+  (attributions ?? [])
+    .map((a) => a.replace(/<[^>]*>/g, "").trim())
+    .filter(Boolean)
+    .join(", ");
 
 export default function FoodCard(props: FoodCardProps): React.ReactElement {
   const router = useRouter();
   const [currentThumbIndex, setCurrentThumbIndex] = useState(0);
+  // URLs that failed to load. Blob storage on the Hobby plan can become unavailable if its
+  // limits are hit, so a broken place photo must degrade to the YouTube thumbnail (served
+  // free from i.ytimg.com) rather than leaving an empty card.
+  const [failedUrls, setFailedUrls] = useState<string[]>([]);
   const ratingValue = typeof props.rating === "string" ? parseFloat(props.rating) : props.rating;
 
-  const thumbnails = props.allThumbnails && props.allThumbnails.length > 0 
-    ? props.allThumbnails.map(t => ({ url: (t.large || t.small || ""), source: t.source }))
-    : [{ url: props.thumbnail, source: undefined as "place" | "youtube" | undefined }];
+  // Empty URLs must never reach next/image (it throws on src=""), so filter them out here
+  // and fall back to rendering a plain background when a place has no usable image.
+  const fromAllThumbnails = (props.allThumbnails ?? [])
+    .map((t) => ({ url: t.large || t.small || "", source: t.source }))
+    .filter((t) => t.url !== "" && !failedUrls.includes(t.url));
+
+  const fallbackThumbnail =
+    props.thumbnail && !failedUrls.includes(props.thumbnail) ? props.thumbnail : "";
+
+  const thumbnails: { url: string; source?: "place" | "youtube" }[] =
+    fromAllThumbnails.length > 0
+      ? fromAllThumbnails
+      : fallbackThumbnail
+        ? [{ url: fallbackThumbnail, source: undefined }]
+        : [];
+
+  // The list shrinks when an image fails to load, so the cycling index has to be clamped
+  // or the card would render nothing until the next 4s tick.
+  const activeIndex = thumbnails.length > 0 ? currentThumbIndex % thumbnails.length : 0;
 
   useEffect(() => {
     if (thumbnails.length <= 1) return;
@@ -77,11 +120,20 @@ export default function FoodCard(props: FoodCardProps): React.ReactElement {
     >
       {/* Background Image */}
       <Box sx={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
+        {thumbnails.length === 0 && (
+          <Box
+            sx={{
+              position: "absolute",
+              inset: 0,
+              background: "linear-gradient(160deg, #2d3436 0%, #000000 100%)",
+            }}
+          />
+        )}
         {thumbnails.map((thumb, idx) => {
           // Only render the current image and the next one to allow preloading/smooth transition.
           // Always keep the first one (idx 0) rendered for priority/initial load consistency.
-          const isCurrent = idx === currentThumbIndex;
-          const isNext = idx === (currentThumbIndex + 1) % thumbnails.length;
+          const isCurrent = idx === activeIndex;
+          const isNext = idx === (activeIndex + 1) % thumbnails.length;
           const isInitial = idx === 0;
 
           if (!isCurrent && !isNext && !isInitial) return null;
@@ -107,6 +159,14 @@ export default function FoodCard(props: FoodCardProps): React.ReactElement {
                 sizes="(max-width: 500px) 100vw, 500px"
                 style={{ objectFit: "cover" }}
                 priority={props.index < 2 && idx === 0}
+                unoptimized={isYouTubeThumbnail(thumb.url)}
+                // Drop this source and fall through to the next one (typically a YouTube
+                // thumbnail) rather than showing a broken image.
+                onError={() =>
+                  setFailedUrls((prev) =>
+                    prev.includes(thumb.url) ? prev : [...prev, thumb.url]
+                  )
+                }
               />
             </Box>
           );
@@ -142,10 +202,10 @@ export default function FoodCard(props: FoodCardProps): React.ReactElement {
             <Box
               key={idx}
               sx={{
-                width: idx === currentThumbIndex ? 20 : 6,
+                width: idx === activeIndex ? 20 : 6,
                 height: 4,
                 borderRadius: 2,
-                bgcolor: idx === currentThumbIndex ? "white" : "rgba(255,255,255,0.4)",
+                bgcolor: idx === activeIndex ? "white" : "rgba(255,255,255,0.4)",
                 transition: "all 0.3s ease",
               }}
             />
@@ -181,9 +241,9 @@ export default function FoodCard(props: FoodCardProps): React.ReactElement {
             />
           )}
 
-          {thumbnails[currentThumbIndex]?.source && (
+          {thumbnails[activeIndex]?.source && (
             <Chip
-              label={thumbnails[currentThumbIndex].source === "place" ? "Place Photo" : "From Video"}
+              label={thumbnails[activeIndex].source === "place" ? "Place Photo" : "From Video"}
               size="small"
               sx={{
                 bgcolor: "rgba(0,0,0,0.6)",
@@ -198,6 +258,21 @@ export default function FoodCard(props: FoodCardProps): React.ReactElement {
                 "& .MuiChip-label": { px: 1 }
               }}
             />
+          )}
+
+          {/* Google requires photo attributions to be displayed alongside the image. */}
+          {thumbnails[activeIndex]?.source === "place" && attributionText(props.photoAttribution) && (
+            <Typography
+              variant="caption"
+              sx={{
+                color: "rgba(255,255,255,0.75)",
+                fontSize: "0.6rem",
+                textShadow: "0 1px 2px rgba(0,0,0,0.8)",
+                maxWidth: 220,
+              }}
+            >
+              Photo: {attributionText(props.photoAttribution)}
+            </Typography>
           )}
         </Stack>
       </Box>
@@ -276,7 +351,13 @@ export default function FoodCard(props: FoodCardProps): React.ReactElement {
           )}
 
           <Chip
-            label={props.displacement ? `${props.displacement} Km` : "Distance"}
+            // Distinguish "no location yet" from a genuine 0 km — a place you are
+            // standing next to used to render as "Distance".
+            label={
+              props.useLocation && Number.isFinite(props.displacement)
+                ? `${props.displacement} Km`
+                : "Distance"
+            }
             onClick={() => !props.useLocation && props.setUseLocation(true)}
             sx={{
               bgcolor: "rgba(0,0,0,0.4)",

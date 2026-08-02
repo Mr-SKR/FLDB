@@ -7,6 +7,7 @@ import { PAGE_SIZE } from "../config/constants";
 
 export const usePlaceFilters = (initialData: PlaceInterface[], userLocation: UserLocation | null) => {
   const [searchValue, setSearchValue] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [hasVeg, setHasVeg] = useState(false);
   const [places, setPlaces] = useState<PlaceInterface[]>(initialData);
   const [page, setPage] = useState(1);
@@ -18,17 +19,35 @@ export const usePlaceFilters = (initialData: PlaceInterface[], userLocation: Use
 
   const isFirstRender = useRef(true);
 
-  // Initialize from sessionStorage on mount
+  // Depend on the coordinates themselves rather than the location object. A new object
+  // identity with unchanged coordinates must never trigger a refetch — that would
+  // replace the accumulated feed with page 1 and lose the user's scroll progress.
+  const lat = userLocation?.lat;
+  const lng = userLocation?.long;
+
+  // Initialize from sessionStorage on mount.
   useEffect(() => {
     const savedSearch = sessionStorage.getItem("searchValue") || "";
     const savedVeg = sessionStorage.getItem("vegToggleOn");
-    const hasVegVal = savedVeg ? JSON.parse(savedVeg) : false;
 
-    queueMicrotask(() => {
-      if (savedSearch) setSearchValue(savedSearch);
-      if (hasVegVal) setHasVeg(hasVegVal);
-      setIsHydrated(true);
-    });
+    let hasVegVal = false;
+    try {
+      hasVegVal = savedVeg ? JSON.parse(savedVeg) : false;
+    } catch {
+      hasVegVal = false;
+    }
+
+    // Deliberately applied after hydration: this is client-only state that the server
+    // could not have rendered, so setting it during render would mismatch.
+    /* eslint-disable react-hooks/set-state-in-effect */
+    if (savedSearch) {
+      // Seed both so a restored search does not pay the 500ms typing debounce.
+      setSearchValue(savedSearch);
+      setDebouncedSearch(savedSearch);
+    }
+    if (hasVegVal) setHasVeg(hasVegVal);
+    setIsHydrated(true);
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
   // Sync filters to sessionStorage
@@ -54,10 +73,8 @@ export const usePlaceFilters = (initialData: PlaceInterface[], userLocation: Use
     }
 
     try {
-      const lat = userLocation?.lat;
-      const lng = userLocation?.long;
       let url = `/api/search?q=${encodeURIComponent(search)}&veg=${veg}&page=${pageNum}&limit=${PAGE_SIZE}`;
-      if (lat !== undefined && lng !== undefined) {
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
         url += `&lat=${lat}&lng=${lng}`;
       }
 
@@ -79,34 +96,34 @@ export const usePlaceFilters = (initialData: PlaceInterface[], userLocation: Use
       setIsLoadingMore(false);
       isFirstRender.current = false;
     }
-  }, [userLocation]); // Added userLocation to dependencies
+  }, [lat, lng]);
 
-  // Debounced search/filter trigger
+  // Debounce only the search text. Typing needs a settle delay; a location arriving or a
+  // filter toggling does not, and making them wait 500ms was adding avoidable latency to
+  // the first render of nearby results.
+  useEffect(() => {
+    if (!isHydrated) return;
+    if (searchValue === debouncedSearch) return;
+
+    const timer = setTimeout(() => setDebouncedSearch(searchValue), 500);
+    return () => clearTimeout(timer);
+  }, [searchValue, debouncedSearch, isHydrated]);
+
+  // Fetch whenever the settled query, the veg filter, or the position changes.
   useEffect(() => {
     if (!isHydrated) return;
 
     if (isFirstRender.current) {
-      // If we don't have location yet and no filters, skip initial fetch
-      // But if we just got location, we should fetch!
-      if (!searchValue && !hasVeg && !userLocation) {
+      // Nothing to fetch beyond the server-rendered first page.
+      if (!debouncedSearch && !hasVeg && !Number.isFinite(lat)) {
         isFirstRender.current = false;
         return;
       }
-      
-      // If we HAVE filters or location on hydration/render, fetch immediately
-      queueMicrotask(() => {
-        fetchPlaces(1, searchValue, hasVeg, false);
-      });
-      return;
     }
 
-    const delayDebounceFn = setTimeout(() => {
-      setPage(1);
-      fetchPlaces(1, searchValue, hasVeg, false);
-    }, 500);
-
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchValue, hasVeg, userLocation, fetchPlaces, isHydrated]); // Added userLocation to dependencies
+    setPage(1);
+    fetchPlaces(1, debouncedSearch, hasVeg, false);
+  }, [debouncedSearch, hasVeg, lat, lng, fetchPlaces, isHydrated]);
 
   const loadMore = useCallback(() => {
     if (!hasMore || isLoadingMore || isSearching || isInitialLoading) return;
@@ -120,16 +137,16 @@ export const usePlaceFilters = (initialData: PlaceInterface[], userLocation: Use
 
     if (userLocation) {
       result = result.map((place) => {
-        const lat = place.geometry?.location?.lat;
-        const lng = place.geometry?.location?.lng;
+        const placeLat = place.geometry?.location?.lat;
+        const placeLng = place.geometry?.location?.lng;
 
-        if (lat != null && lng != null) {
+        if (placeLat != null && placeLng != null) {
           const displacement = Math.ceil(
             getDisplacementFromLatLonInKm(
               userLocation.lat,
               userLocation.long,
-              lat,
-              lng
+              placeLat,
+              placeLng
             )
           );
           return { ...place, displacement };
@@ -137,16 +154,17 @@ export const usePlaceFilters = (initialData: PlaceInterface[], userLocation: Use
         return { ...place, displacement: Infinity };
       });
 
-      // If we are browsing (no search), sort by distance
-      // Note: Server already sorts, but client-side sort handles re-sorting 
-      // when location changes slightly without a re-fetch
-      if (!searchValue) {
+      // If we are browsing (no search), sort by distance.
+      // Note: the server already sorts, but re-sorting here keeps the order correct
+      // when the location shifts without triggering a refetch. Keyed on the settled
+      // query so the ordering matches the results actually on screen.
+      if (!debouncedSearch) {
         result.sort((a, b) => (a.displacement ?? Infinity) - (b.displacement ?? Infinity));
       }
     }
 
     return result;
-  }, [places, searchValue, userLocation]);
+  }, [places, debouncedSearch, userLocation]);
 
   return {
     searchValue,

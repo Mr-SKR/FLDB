@@ -6,8 +6,7 @@ import {
   Brightness7 as Brightness7Icon,
 } from "@mui/icons-material";
 import { useRouter } from "next/router";
-import { useTheme } from "@mui/material/styles";
-import { ColorModeContext } from "../../pages/_app";
+import { useColorScheme } from "@mui/material/styles";
 
 interface HeaderProps {
   showThemeToggle?: boolean;
@@ -16,8 +15,11 @@ interface HeaderProps {
 
 export default function SearchAppBar({ showThemeToggle = true, showAbout = true }: HeaderProps) {
   const router = useRouter();
-  const theme = useTheme();
-  const colorMode = React.useContext(ColorModeContext);
+  const { mode, systemMode, setMode } = useColorScheme();
+
+  // `mode` is "system" until the user picks explicitly, and undefined until mounted.
+  const resolvedMode = mode === "system" ? systemMode : mode;
+  const toggleColorMode = () => setMode(resolvedMode === "dark" ? "light" : "dark");
 
   return (
     <Box sx={{ flexGrow: 1 }}>
@@ -46,8 +48,8 @@ export default function SearchAppBar({ showThemeToggle = true, showAbout = true 
           </Box>
 
           {showThemeToggle && (
-            <IconButton sx={{ ml: 1 }} onClick={colorMode.toggleColorMode} color="inherit">
-              {theme.palette.mode === "dark" ? <Brightness7Icon /> : <Brightness4Icon />}
+            <IconButton sx={{ ml: 1 }} onClick={toggleColorMode} color="inherit">
+              {resolvedMode === "dark" ? <Brightness7Icon /> : <Brightness4Icon />}
             </IconButton>
           )}
 

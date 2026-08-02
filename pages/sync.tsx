@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import {
   Container,
   Paper,
@@ -63,40 +63,72 @@ const SyncPage = () => {
   const [loadingList, setLoadingList] = useState(false);
   const [syncingAll, setSyncingAll] = useState(false);
   const [globalError, setGlobalError] = useState("");
+  const [sourcesStatus, setSourcesStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
 
-  const fetchSources = useCallback(async () => {
-    if (!secret) return;
+  /**
+   * Loads the configured channels/playlists.
+   *
+   * Deliberately NOT wired to a `useEffect` on `secret`: that fired one request per
+   * keystroke, sending every prefix of the secret to the server as a Bearer token and
+   * logging each as an unauthorized attempt. Callers trigger this explicitly instead.
+   */
+  const fetchSources = useCallback(async (): Promise<PlaylistSource[]> => {
+    if (!secret) return [];
+    setSourcesStatus("loading");
     try {
       const res = await fetch(`/api/sync?action=get-sources`, {
         headers: { "Authorization": `Bearer ${secret}` }
       });
-      if (res.ok) {
-        const data = await res.json();
-        setSources(data);
-        if (data.length > 0 && data[0].playlists.length > 0) {
-          setSelectedPlaylist(data[0].playlists[0].id);
-        }
+
+      if (!res.ok) {
+        setSources([]);
+        setSourcesStatus("error");
+        setGlobalError(
+          res.status === 401
+            ? "Invalid sync secret."
+            : `Could not load sources (HTTP ${res.status}).`
+        );
+        return [];
       }
+
+      const data: PlaylistSource[] = await res.json();
+      setSources(data);
+      setSourcesStatus("ready");
+      setGlobalError("");
+      if (data.length > 0 && data[0].playlists.length > 0) {
+        setSelectedPlaylist((prev) => prev || data[0].playlists[0].id);
+      }
+      return data;
     } catch (err) {
       logger.error("Failed to fetch sources", "SyncPage", err);
+      setSourcesStatus("error");
+      setGlobalError("Could not reach the sync API.");
+      return [];
     }
   }, [secret]);
-
-  useEffect(() => {
-    if (secret) {
-      fetchSources();
-    }
-  }, [secret, fetchSources]);
 
   const fetchVideoList = async (token?: string) => {
     if (!secret) {
       setGlobalError("Please enter the sync secret first.");
       return;
     }
+
+    // Never call the list endpoint without a playlist id: the server would walk every
+    // configured playlist to exhaustion.
+    let playlistId = selectedPlaylist;
+    if (!playlistId) {
+      const loaded = await fetchSources();
+      playlistId = loaded[0]?.playlists[0]?.id ?? "";
+      if (!playlistId) {
+        setGlobalError("No playlists available. Check the sync secret.");
+        return;
+      }
+    }
+
     setLoadingList(true);
     setGlobalError("");
     try {
-      const url = `/api/sync?action=list${token ? `&pageToken=${token}` : ""}${selectedPlaylist ? `&playlistId=${selectedPlaylist}` : ""}`;
+      const url = `/api/sync?action=list${token ? `&pageToken=${token}` : ""}&playlistId=${playlistId}`;
       const res = await fetch(url, {
         headers: {
           "Authorization": `Bearer ${secret}`
@@ -127,9 +159,11 @@ const SyncPage = () => {
     setVideos(prev => prev.map(v => v.videoId === videoId ? { ...v, syncStatus: "loading" } : v));
     
     try {
+      // Sync mutates state, so it goes over POST (the API rejects GET for this action).
       const res = await fetch(
-        `/api/sync?action=sync&videoId=${videoId}&mode=${mode}&isVeg=${isVeg}`,
+        `/api/sync?action=sync&videoId=${encodeURIComponent(videoId)}&mode=${mode}&isVeg=${isVeg}`,
         {
+          method: "POST",
           headers: {
             "Authorization": `Bearer ${secret}`
           }
@@ -265,6 +299,15 @@ const SyncPage = () => {
                 type="password"
                 value={secret}
                 onChange={(e) => setSecret(e.target.value)}
+                // Load sources once the field is committed, not on every keystroke.
+                onBlur={() => { if (secret) fetchSources(); }}
+                helperText={
+                  sourcesStatus === "loading" ? "Checking secret…"
+                  : sourcesStatus === "ready" ? "Secret accepted."
+                  : sourcesStatus === "error" ? "Secret rejected."
+                  : "Press Tab or click away to connect."
+                }
+                error={sourcesStatus === "error"}
               />
             </Grid>
             <Grid item xs={12} sm={6}>

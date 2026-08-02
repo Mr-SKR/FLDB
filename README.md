@@ -60,19 +60,77 @@ Create a `.env` file in the root directory:
 MONGODB_URI=your_mongodb_connection_string
 NEXT_PUBLIC_DISQUS_SHORTNAME=your_disqus_shortname
 
+# Optional: canonical public origin, used for the sitemap and Disqus thread URLs.
+# Defaults to https://foodloversdatabase.com when unset.
+HOST=https://your-domain.com
+
 # Database Sync Configuration
 YOUTUBE_API_KEY=your_youtube_api_key
 GOOGLE_MAPS_API_KEY=your_google_maps_api_key
 SYNC_SECRET=your_custom_secure_string_for_api_trigger
+
+# Vercel Blob (place photo storage).
+# Set automatically in Vercel once a Blob store is linked to the project;
+# only needed here if you run a sync or backfill locally.
+BLOB_READ_WRITE_TOKEN=your_blob_read_write_token
 ```
+
+Only `MONGODB_URI` is required to render the public site. The three sync variables are
+validated lazily, on first use, so a preview deployment that never runs a sync does not need
+Google credentials.
+
+### 5. MongoDB Atlas Search Index (required for search)
+
+The `/api/search` endpoint uses an Atlas Search `$search` stage, which depends on a search
+index that is **not** created by the application. Without it, search requests fail.
+
+In Atlas → your cluster → **Atlas Search** → *Create Search Index*, create a **dynamic** index
+on the `places` collection named exactly `default`:
+
+```json
+{
+  "mappings": { "dynamic": true }
+}
+```
+
+The indexed fields used by the query are `name`, `formatted_address`, and `searchContent`.
 
 ## 🔄 Database Syncing
 
 The database is populated by a multi-step synchronization process that interfaces with the YouTube Data API and Google Places API. The system supports multiple channels and playlists as defined in `config/syncConfig.ts`.
 
 ### 🛡️ Authorization
+> ### ⚠️ `SYNC_SECRET` is deliberately NOT set on the production deployment
+>
+> Syncing is run **locally**, against the production database. Because the deployed app has
+> no `SYNC_SECRET`, `/api/sync` returns `503` for every action — before authentication and
+> before any Google-touching code runs. The deployed site therefore **cannot consume Google
+> API quota**; the only Google calls ever made are the ones you trigger yourself from your
+> machine.
+>
+> If you ever automate syncing (a Vercel Cron picking up new videos, for example) you would
+> have to set `SYNC_SECRET` in the deployment — and at that point its strength matters a
+> great deal, since it becomes the only thing protecting an endpoint that spends your Google
+> budget and writes to your database. Generate a strong one:
+>
+> ```bash
+> openssl rand -base64 32
+> ```
+>
+> The endpoint refuses to run in production with a secret shorter than 16 characters.
+>
+> Independently of the code, cap the blast radius in Google Cloud Console:
+> **APIs & Services → your API → Quotas** (a few thousand requests/day is far more than a
+> manual sync needs), plus a billing budget alert. That bounds the cost regardless of any
+> bug or misconfiguration.
+
 All sync requests must be authorized using the `SYNC_SECRET` defined in your environment variables. For security, authorization is strictly handled via headers to avoid leaking secrets in server logs or browser history.
 - **Header:** `Authorization: Bearer YOUR_SYNC_SECRET`
+- The secret is compared in constant time, and the endpoint is rate limited per IP (both before and after authentication). Note that the limiter is in-memory, so on serverless platforms it is per-instance and best-effort — use Vercel Firewall rules or an external counter if you need a hard global limit.
+
+### 🔁 Methods
+
+Read-only actions (`list`, `get-sources`) accept `GET`. The `sync` action mutates state and **requires `POST`**.
 
 ### 🛠️ API Actions
 
@@ -99,6 +157,63 @@ Trigger a deep sync for a specific video. This extracts location data and enrich
 curl -X POST -H "Authorization: Bearer YOUR_SECRET" "http://localhost:3000/api/sync?action=sync&videoId=VIDEO_ID&mode=soft&isVeg=true"
 ```
 
+## 🖼️ Place Photo Storage
+
+Place photos are stored in **Vercel Blob**, not in MongoDB. Each place keeps only a stable
+key (`places/<place_id>.webp`) and its public URL; the image itself is a 1600px WebP.
+
+Photos were previously inlined into the documents as base64 data URLs. Because the same
+string was written to five fields per place, that cost roughly 255 KB per place (~155 MB
+across the database) and forced a 480px resolution cap to fit the free tier.
+
+Images are rendered through `next/image`, which puts Vercel's image cache in front of the
+blob store. If a place photo ever fails to load, the card falls back to the YouTube
+thumbnail rather than showing a broken image.
+
+### Backfill
+
+Migrating existing places re-fetches each photo from Google at the new resolution — the
+stored 480px bytes cannot be upscaled. The endpoint is batched and resumable:
+
+```bash
+# Returns { migrated, failed, failures, remaining, nextCursor, done }
+curl -X POST -H "Authorization: Bearer YOUR_SECRET" \
+  "http://localhost:3000/api/sync?action=backfill-photos&limit=25"
+
+# Continue from where it stopped
+curl -X POST -H "Authorization: Bearer YOUR_SECRET" \
+  "http://localhost:3000/api/sync?action=backfill-photos&limit=25&cursor=PLACE_ID"
+```
+
+Places whose `photoReference` has expired keep their existing image and are listed in
+`failures`; recover those with a hard sync of the relevant video.
+
+Once you have confirmed the migrated images render correctly, reclaim the database space.
+**This is destructive and irreversible** — it drops the legacy base64 field:
+
+```bash
+curl -X POST -H "Authorization: Bearer YOUR_SECRET" \
+  "http://localhost:3000/api/sync?action=cleanup-photo-blobs"
+```
+
+### When synced data appears on the live site
+
+Pages are served via ISR and revalidate **hourly** (`/` and `/place/[slug]`). Because syncing
+runs locally against the production database, the deployment never learns that data changed —
+and on-demand revalidation can't help, since calling it from your machine invalidates your
+local cache rather than the deployment's. The revalidate timer is therefore the mechanism by
+which a sync becomes visible in production.
+
+Two things soften this in practice:
+
+- `/api/search` is a dynamic route querying MongoDB live, so browsing, searching, and
+  location-sorted results are **always fresh** regardless of ISR.
+- New places get their page generated on first request (`fallback: true`), so they don't wait
+  for a revalidation window.
+
+If you want a sync reflected immediately, trigger a **Vercel Deploy Hook** after running it —
+a rebuild regenerates every page from current data.
+
 ## 🖥️ Sync Management Interface
 
 For easier management, FLDb includes a built-in admin dashboard located at `/sync`. This interface provides a visual way to manage the database without manually using `curl`.
@@ -114,7 +229,7 @@ For easier management, FLDb includes a built-in admin dashboard located at `/syn
 
 ### How to use:
 1. Navigate to `https://foodloversdatabase.com/sync` (or `localhost:3000/sync`).
-2. Enter your `SYNC_SECRET` in the "Sync Secret" field.
+2. Enter your `SYNC_SECRET` in the "Sync Secret" field, then click away (or press Tab) to connect. The field only contacts the API once you leave it, so partial secrets are never sent.
 3. Select a target channel/playlist.
 4. Click **Load Playlist** to see the latest videos.
 5. Use the sync buttons on individual videos or the "Sync Current Page" button for bulk updates.

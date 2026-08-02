@@ -11,7 +11,6 @@ import {
   Paper,
   Divider,
 } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
 import {
   ExpandMore as ExpandMoreIcon,
   ArrowBack as ArrowBackIcon,
@@ -29,6 +28,10 @@ import ResponsiveDrawer from "../../components/headers/Header";
 import { PlaceInterface, VideoInterface } from "../../types/types";
 import { getAllPlaceSlugs, getPlaceBySlug, getVideosForPlace } from "../../services/placeService";
 import { RestaurantInfo } from "../../components/ui/RestaurantInfo";
+import { SITE_URL } from "../../config/constants";
+
+/** How long a prerendered place page may serve stale before ISR regenerates it. */
+const PLACE_REVALIDATE_SECONDS = 3600;
 
 interface PlacePageProps {
   slug: string;
@@ -39,7 +42,6 @@ interface PlacePageProps {
 
 const PlacePage: React.FC<PlacePageProps> = ({ place, videos, host }) => {
   const router = useRouter();
-  const theme = useTheme();
 
   if (router.isFallback) {
     return (
@@ -240,7 +242,7 @@ const PlacePage: React.FC<PlacePageProps> = ({ place, videos, host }) => {
                   <DiscussionEmbed
                     shortname={process.env.NEXT_PUBLIC_DISQUS_SHORTNAME || "disqus-shortname"}
                     config={{
-                      url: (host || "https://fl-db.in") + router.asPath,
+                      url: (host || SITE_URL) + router.asPath,
                       identifier: place.place_id,
                       title: place.name,
                     }}
@@ -267,15 +269,18 @@ export const getStaticProps = async (context: GetStaticPropsContext) => {
   const { slug } = context.params!;
   const place = await getPlaceBySlug(slug as string);
 
+  // Without `revalidate` these pages were frozen at build time, so a sync that attached a
+  // new video to an existing place never surfaced until the next deploy.
   if (!place) {
-    return { notFound: true };
+    return { notFound: true, revalidate: PLACE_REVALIDATE_SECONDS };
   }
 
   const videos = await getVideosForPlace(place.videoIds);
 
-  const host = process.env.HOST || "";
+  const host = process.env.HOST || SITE_URL;
   return {
     props: { slug, place, videos, host },
+    revalidate: PLACE_REVALIDATE_SECONDS,
   };
 };
 

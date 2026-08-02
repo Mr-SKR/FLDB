@@ -1,4 +1,4 @@
-import React, { useEffect, forwardRef, useState, useRef, useCallback, useContext } from "react";
+import React, { useEffect, forwardRef, useState, useRef, useCallback } from "react";
 import {
   Typography,
   Snackbar,
@@ -24,7 +24,6 @@ import ResponsiveDrawer from "../components/headers/Header";
 import { LoadingScreen } from "../components/ui/LoadingScreen";
 import { LocationPrompt } from "../components/ui/LocationPrompt";
 import { MobileControls } from "../components/ui/MobileControls";
-import { ColorModeContext } from "./_app";
 
 const Alert = forwardRef<HTMLDivElement, AlertProps>(function Alert(props, ref) {
   return <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />;
@@ -39,11 +38,12 @@ const Home: React.FC<HomeProps> = ({ data }) => {
   const [isLocationPromptOpen, setIsLocationPromptOpen] = useState(false);
   const observerTarget = useRef<HTMLDivElement>(null);
   const feedContainerRef = useRef<HTMLDivElement>(null);
-  const colorMode = useContext(ColorModeContext);
 
   const {
     userLocation,
     error: geoError,
+    permissionState,
+    locationPending,
     refreshLocation,
     clearLocation,
   } = useGeolocation();
@@ -71,40 +71,16 @@ const Home: React.FC<HomeProps> = ({ data }) => {
     prevUserLocation.current = userLocation;
   }, [userLocation]);
 
-  // Check for location permissions/prompt logic
+  // Offer our own prompt only when the browser has not already decided for us.
+  // Permission resolution and the "already granted" fetch both live in useGeolocation.
   useEffect(() => {
-    const checkLocationStatus = async () => {
-      // If we already have location in state/session, no need to prompt
-      if (userLocation) return;
+    if (userLocation) return;
+    if (permissionState !== "prompt" && permissionState !== "unsupported") return;
+    if (sessionStorage.getItem("skipLocationPrompt")) return;
 
-      const hasSkippedPrompt = sessionStorage.getItem("skipLocationPrompt");
-      if (hasSkippedPrompt) return;
-
-      // Check browser permissions API if available
-      if (navigator.permissions && navigator.permissions.query) {
-        try {
-          const result = await navigator.permissions.query({ name: "geolocation" });
-          if (result.state === "granted") {
-            // Already allowed by browser, just fetch it
-            await refreshLocation(true);
-            return;
-          } else if (result.state === "denied") {
-            // User explicitly blocked it in browser, don't show custom prompt
-            return;
-          }
-        } catch (e) {
-          logger.error("Error checking location permissions", "Home", e);
-        }
-      }
-
-      // If state is 'prompt' or API not supported, show our custom modal
-      setTimeout(() => {
-        setIsLocationPromptOpen(true);
-      }, 1000);
-    };
-
-    checkLocationStatus();
-  }, [userLocation, refreshLocation]);
+    const timer = setTimeout(() => setIsLocationPromptOpen(true), 1000);
+    return () => clearTimeout(timer);
+  }, [permissionState, userLocation]);
 
   const handleAllowLocation = async () => {
     setIsLocationPromptOpen(false);
@@ -137,9 +113,10 @@ const Home: React.FC<HomeProps> = ({ data }) => {
     return () => observer.disconnect();
   }, [handleObserver]);
 
-  if (isInitialLoading) {
-    return <LoadingScreen />;
-  }
+  // Rendered as a fixed-position overlay rather than replacing the feed, so the
+  // server-rendered content stays in the HTML for crawlers while we suppress the
+  // default (non-local) ordering from being shown to the user as if it were final.
+  const showLoadingOverlay = isInitialLoading || locationPending;
 
   return (
     <Box 
@@ -154,9 +131,12 @@ const Home: React.FC<HomeProps> = ({ data }) => {
     >
       <Head>
         <title>FLDb | Food Lovers Database</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
+        {/* The canonical viewport tag lives in _app.tsx. It deliberately does not set
+            maximum-scale/user-scalable=0, which would disable pinch-zoom (WCAG 1.4.4). */}
         <meta name="theme-color" content="#000000" />
       </Head>
+
+      {showLoadingOverlay && <LoadingScreen />}
 
       <LocationPrompt
         open={isLocationPromptOpen}
@@ -170,7 +150,7 @@ const Home: React.FC<HomeProps> = ({ data }) => {
       </Box>
 
       {/* Mobile Controls */}
-      <MobileControls onToggleColorMode={colorMode.toggleColorMode} />
+      <MobileControls />
 
       <Snackbar open={!!geoError} autoHideDuration={6000} sx={{ mb: 8 }}>
         <Alert severity="error" sx={{ width: "100%" }}>
@@ -303,17 +283,34 @@ const Home: React.FC<HomeProps> = ({ data }) => {
   );
 };
 
+/**
+ * How long the server-rendered first page may serve stale, matching the place pages.
+ *
+ * This payload is only the pre-hydration placeholder: any visitor who grants location,
+ * searches, or filters immediately fetches live results from /api/search, so staleness is
+ * visible only to someone who declines location and does nothing — and then only as the
+ * alphabetically-first ten places, which barely change.
+ *
+ * Because syncing runs locally against the production database, the deployment never learns
+ * that data changed, and on-demand revalidation cannot reach it. This timer is therefore the
+ * mechanism by which a sync becomes visible on the live site. Trigger a Vercel Deploy Hook
+ * after syncing if you want it live immediately.
+ */
+const HOME_REVALIDATE_SECONDS = 3600;
+
 export const getStaticProps = async () => {
   try {
     const { data } = await getPlacesPaginated(1, 10);
     return {
       props: { data: data || [] },
-      revalidate: 60,
+      revalidate: HOME_REVALIDATE_SECONDS,
     };
   } catch (error) {
     logger.error("Error in getStaticProps", "Home", error);
     return {
       props: { data: [] },
+      // Retry sooner after a failure so a transient database error does not pin an empty
+      // page in the cache for a full hour.
       revalidate: 60,
     };
   }

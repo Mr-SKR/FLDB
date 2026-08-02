@@ -49,7 +49,7 @@ export const FeedViewer: React.FC<FeedViewerProps> = ({
             slug={place.slug}
             title={place.name}
             address={place.formatted_address || ""}
-            displacement={place.displacement || 0}
+            displacement={place.displacement ?? Infinity}
             hasVeg={place.hasVeg || false}
             height="100%"
             thumbnail={place.thumbnail?.large || place.thumbnail?.small || ""}
@@ -59,6 +59,7 @@ export const FeedViewer: React.FC<FeedViewerProps> = ({
             index={index}
             rating={place.rating}
             url={place.url}
+            photoAttribution={place.photoAttribution}
           />
         ))
       ) : !isSearching && (

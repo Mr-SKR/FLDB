@@ -45,7 +45,14 @@ export interface PlaceInterface {
     large?: string;
   };
   placePhotoReference?: string;
+  /** @deprecated legacy base64 data URL; removed after the blob migration is verified. */
   placePhotoBase64?: string;
+  /** Stable blob path, e.g. "places/<place_id>.webp". */
+  photoKey?: string;
+  /** Public URL of the stored photo. */
+  photoUrl?: string;
+  photoUpdatedAt?: string | Date;
+  photoAttribution?: string[];
   allThumbnails?: {
     small?: string;
     large?: string;
