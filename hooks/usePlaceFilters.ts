@@ -1,11 +1,58 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useState, useMemo, useEffect, useLayoutEffect, useCallback, useRef } from "react";
+import { useRouter } from "next/router";
 import { PlaceInterface } from "../types/types";
 import { getDisplacementFromLatLonInKm } from "../utils/getGeoDisplacement";
 import { UserLocation } from "./useGeolocation";
 import { logger } from "../lib/logger";
 import { PAGE_SIZE } from "../config/constants";
 
-export const usePlaceFilters = (initialData: PlaceInterface[], userLocation: UserLocation | null) => {
+/**
+ * The feed as it stood when the reader last navigated away from it.
+ *
+ * Module scope rather than sessionStorage on purpose. This only has to survive a
+ * client-side route change, during which the module stays loaded, so nothing needs
+ * serialising. A hard reload clears it, which is the right outcome: a genuinely fresh
+ * page load should show fresh data rather than a resurrected list of unknown age.
+ *
+ * The query it was captured under is stored alongside it, because restoring the wrong
+ * list is far worse than restoring none.
+ */
+interface FeedSnapshot {
+  places: PlaceInterface[];
+  page: number;
+  hasMore: boolean;
+  search: string;
+  veg: boolean;
+  lat?: number;
+  lng?: number;
+  scrollTop: number;
+  /** Slug of the card at the top of the viewport. Survives a resize; scrollTop does not. */
+  anchorSlug?: string;
+}
+
+let feedSnapshot: FeedSnapshot | null = null;
+
+/**
+ * `useLayoutEffect` on the client, `useEffect` on the server.
+ *
+ * The scroll restore has to run before paint, or the reader sees a frame at the top of the
+ * feed before it jumps to where they were. `useLayoutEffect` alone warns during SSR, where
+ * it cannot run at all.
+ */
+const useIsomorphicLayoutEffect =
+  typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
+/** Discards the snapshot. Exported so a deliberate "back to the top" can opt out. */
+export const clearFeedSnapshot = () => {
+  feedSnapshot = null;
+};
+
+export const usePlaceFilters = (
+  initialData: PlaceInterface[],
+  userLocation: UserLocation | null,
+  containerRef?: React.RefObject<HTMLDivElement | null>
+) => {
+  const router = useRouter();
   const [searchValue, setSearchValue] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [hasVeg, setHasVeg] = useState(false);
@@ -16,8 +63,28 @@ export const usePlaceFilters = (initialData: PlaceInterface[], userLocation: Use
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
+  /**
+   * True when this mount put a saved feed back on screen.
+   *
+   * Exposed because the caller has a "jump to the top when a position arrives" behaviour
+   * that would otherwise undo the restore: coming back from a place page replays the
+   * stored location, which looks to that effect exactly like location being granted for
+   * the first time.
+   */
+  const [restoredFeed, setRestoredFeed] = useState(false);
 
   const isFirstRender = useRef(true);
+  /**
+   * True while the feed is showing a restored snapshot that still matches the live query.
+   *
+   * The fetch effect below runs on mount and would immediately replace the restored list
+   * with a fresh page one, undoing the restore. This holds it off for exactly as long as
+   * the query is unchanged; the moment a filter or the position genuinely differs, it
+   * clears and the normal refetch takes over.
+   */
+  const holdingSnapshot = useRef(false);
+  /** Pending scroll offset to reapply once the restored cards have been laid out. */
+  const pendingScroll = useRef<{ scrollTop: number; anchorSlug?: string } | null>(null);
   /**
    * Monotonic id of the most recently issued fetch. Responses that are not the latest are
    * discarded: the debounce makes overlapping requests unlikely but not impossible, and a
@@ -52,6 +119,34 @@ export const usePlaceFilters = (initialData: PlaceInterface[], userLocation: Use
       setDebouncedSearch(savedSearch);
     }
     if (hasVegVal) setHasVeg(hasVegVal);
+
+    /*
+      Put the feed back the way the reader left it.
+
+      Returning from a place page previously dropped them at the top of a ten-item list,
+      however far they had scrolled, because the component remounts and `places` resets to
+      the server-rendered first page. Restoring the scroll offset alone would not help:
+      there would be nothing below item ten to scroll to. The list and the position have
+      to come back together.
+
+      Only restored when the saved query matches the one being hydrated. A snapshot taken
+      under a different search or veg filter belongs to a different list.
+    */
+    const snapshot = feedSnapshot;
+    if (snapshot && snapshot.search === savedSearch && snapshot.veg === hasVegVal) {
+      setPlaces(snapshot.places);
+      setPage(snapshot.page);
+      setHasMore(snapshot.hasMore);
+      holdingSnapshot.current = true;
+      setRestoredFeed(true);
+      pendingScroll.current = {
+        scrollTop: snapshot.scrollTop,
+        anchorSlug: snapshot.anchorSlug,
+      };
+      // There is a full feed on screen already, so the mount-time fetch has nothing to do.
+      isFirstRender.current = false;
+    }
+
     setIsHydrated(true);
     /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
@@ -128,6 +223,28 @@ export const usePlaceFilters = (initialData: PlaceInterface[], userLocation: Use
   useEffect(() => {
     if (!isHydrated) return;
 
+    /*
+      A restored feed is left alone while it still answers the current query.
+
+      This effect also runs on mount, so without the hold it would fire a fresh page one
+      and throw the restored list away before the reader saw it. The position is part of
+      the comparison because the feed is distance-sorted: coming back after moving far
+      enough for `useGeolocation` to publish a new fix should genuinely re-sort.
+    */
+    if (holdingSnapshot.current) {
+      const snapshot = feedSnapshot;
+      const stillMatches =
+        snapshot &&
+        snapshot.search === debouncedSearch &&
+        snapshot.veg === hasVeg &&
+        snapshot.lat === lat &&
+        snapshot.lng === lng;
+
+      if (stillMatches) return;
+      holdingSnapshot.current = false;
+      pendingScroll.current = null;
+    }
+
     if (isFirstRender.current) {
       // Nothing to fetch beyond the server-rendered first page.
       if (!debouncedSearch && !hasVeg && !Number.isFinite(lat)) {
@@ -139,6 +256,40 @@ export const usePlaceFilters = (initialData: PlaceInterface[], userLocation: Use
     setPage(1);
     fetchPlaces(1, debouncedSearch, hasVeg, false);
   }, [debouncedSearch, hasVeg, lat, lng, fetchPlaces, isHydrated]);
+
+  /**
+   * Reapplies the saved scroll offset once the restored cards exist in the DOM.
+   *
+   * Runs on every change to `places` and holds the request until it can actually be
+   * satisfied, rather than firing once and hoping. On the commit where the restore is
+   * requested the DOM still contains the ten server-rendered cards, so the anchor is not
+   * there yet and scrolling would clamp to the bottom of a much shorter list. Only once
+   * the restored cards render does the anchor resolve, and only then is the request
+   * cleared. An earlier version consumed the request immediately and scheduled a
+   * `requestAnimationFrame`, which StrictMode's simulated unmount then cancelled, leaving
+   * nothing to retry with.
+   *
+   * The anchor is preferred over the raw offset because a pixel offset is only meaningful
+   * at the viewport width it was captured at, and this feed switches between a single
+   * column and a grid.
+   */
+  useIsomorphicLayoutEffect(() => {
+    const pending = pendingScroll.current;
+    const container = containerRef?.current;
+    if (!pending || !container) return;
+
+    const anchor = pending.anchorSlug
+      ? container.querySelector<HTMLElement>(`[id="${CSS.escape(pending.anchorSlug)}"]`)
+      : null;
+
+    // Restored cards have not rendered yet. Leave the request in place for the next commit.
+    if (pending.anchorSlug && !anchor) return;
+
+    // `scrollTo` rather than assigning `scrollTop`: the same effect, but an imperative DOM
+    // call rather than a property write the lint rules read as mutating a hook argument.
+    container.scrollTo({ top: anchor ? anchor.offsetTop : pending.scrollTop });
+    pendingScroll.current = null;
+  }, [places, containerRef]);
 
   /**
    * Clears every active filter.
@@ -153,7 +304,76 @@ export const usePlaceFilters = (initialData: PlaceInterface[], userLocation: Use
     setSearchValue("");
     setDebouncedSearch("");
     setHasVeg(false);
+    // Clearing the filters is an explicit request for a different list, so the snapshot
+    // that belonged to the old one must not survive to be restored over it.
+    clearFeedSnapshot();
   }, []);
+
+  /*
+    Latest values, mirrored into a ref so the unmount handler can read them.
+
+    The capture has to run in an effect cleanup with an empty dependency list, since it
+    must fire exactly once, when the page is actually being left. Such a cleanup closes
+    over the values from first render, so it cannot read this state directly.
+  */
+  const latest = useRef({ places, page, hasMore, debouncedSearch, hasVeg, lat, lng });
+
+  // Deliberately has no dependency array: it mirrors after every commit. Assigning during
+  // render instead would be a write to a ref mid-render, which is not safe under
+  // concurrent rendering.
+  useEffect(() => {
+    latest.current = { places, page, hasMore, debouncedSearch, hasVeg, lat, lng };
+  });
+
+  /**
+   * Capture the feed on the way out.
+   *
+   * Hooked to the router's `routeChangeStart` rather than to unmount. Unmount looks like
+   * the right moment but fires in situations that are not a navigation at all: React's
+   * StrictMode deliberately mounts, unmounts and remounts every component in development,
+   * and that simulated unmount would overwrite a good snapshot with the initial ten-item
+   * state microseconds before the remount tried to read it. A route change happens only
+   * when the reader actually leaves.
+   *
+   * Nothing is written on a full page unload, which is deliberate: a reload starts clean.
+   */
+  useEffect(() => {
+    const capture = () => {
+      const container = containerRef?.current;
+      const state = latest.current;
+      if (state.places.length === 0) return;
+
+      const scrollTop = container?.scrollTop ?? 0;
+
+      // Which card is at the top right now. Stored so the position can be restored by
+      // element, which survives a viewport change between leaving and coming back.
+      let anchorSlug: string | undefined;
+      if (container) {
+        for (const child of Array.from(container.children)) {
+          const el = child as HTMLElement;
+          if (el.id && el.offsetTop >= scrollTop - 8) {
+            anchorSlug = el.id;
+            break;
+          }
+        }
+      }
+
+      feedSnapshot = {
+        places: state.places,
+        page: state.page,
+        hasMore: state.hasMore,
+        search: state.debouncedSearch,
+        veg: state.hasVeg,
+        lat: state.lat,
+        lng: state.lng,
+        scrollTop,
+        anchorSlug,
+      };
+    };
+
+    router.events.on("routeChangeStart", capture);
+    return () => router.events.off("routeChangeStart", capture);
+  }, [router, containerRef]);
 
   const loadMore = useCallback(() => {
     if (!hasMore || isLoadingMore || isSearching || isInitialLoading) return;
@@ -212,5 +432,6 @@ export const usePlaceFilters = (initialData: PlaceInterface[], userLocation: Use
     hasMore,
     loadMore,
     resetFilters,
+    restoredFeed,
   };
 };

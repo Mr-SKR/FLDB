@@ -9,6 +9,9 @@ import {
   Button,
   Stack,
   Divider,
+  Switch,
+  FormControlLabel,
+  CircularProgress,
 } from "@mui/material";
 import {
   RotateLeft as RotateLeftIcon,
@@ -35,6 +38,12 @@ interface FilterSectionProps {
   clearLocation: () => void;
   hasVeg: boolean;
   setHasVeg: (val: boolean) => void;
+  /** How many places the current filters match, for live feedback. */
+  resultCount: number;
+  /** True when more pages remain, so the count is reported as a floor rather than a total. */
+  hasMore: boolean;
+  /** True while a query is in flight, so a stale count is not shown as if it were the answer. */
+  isSearching: boolean;
 }
 
 export const FilterSection: React.FC<FilterSectionProps> = ({
@@ -45,85 +54,130 @@ export const FilterSection: React.FC<FilterSectionProps> = ({
   clearLocation,
   hasVeg,
   setHasVeg,
+  resultCount,
+  hasMore,
+  isSearching,
 }) => {
+  /**
+   * Live feedback for a sheet that covers the results it is filtering.
+   *
+   * Typing here updates the feed behind the drawer, which the user cannot see, so without
+   * this the only way to find out whether a search matched anything was to close the sheet.
+   * `hasMore` means only the first page has been fetched, so the count is a floor: reporting
+   * a bare "10 places" when hundreds match would be worse than saying nothing.
+   */
+  const filtersActive = Boolean(searchValue) || hasVeg;
+  const noun = resultCount === 1 && !hasMore ? "place" : "places";
+  const countLabel = isSearching
+    ? "Searching…"
+    : resultCount === 0
+      ? "Nothing matches these filters"
+      : `${resultCount}${hasMore ? "+" : ""} ${noun}${filtersActive ? " match your filters" : ""}`;
+
   return (
     <Box>
       <Stack spacing={3}>
-        {/* Search Section */}
-        <TextField
-          fullWidth
-          placeholder="Search restaurant or dish..."
-          variant="outlined"
-          value={searchValue}
-          onChange={(e) => setSearchValue(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon color="action" />
-              </InputAdornment>
-            ),
-            endAdornment: searchValue && (
-              <InputAdornment position="end">
-                <IconButton onClick={() => setSearchValue("")} size="small">
-                  <ClearIcon />
-                </IconButton>
-              </InputAdornment>
-            ),
-            sx: { borderRadius: "16px", bgcolor: "background.default" },
-          }}
-        />
+        {/* Search field and its match count are one unit, so they are wrapped rather than
+            left as two Stack children fighting the 24px spacing with a negative margin. */}
+        <Box>
+          <TextField
+            fullWidth
+            placeholder="Search restaurant or dish..."
+            variant="outlined"
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon color="action" />
+                </InputAdornment>
+              ),
+              endAdornment: searchValue && (
+                <InputAdornment position="end">
+                  <IconButton onClick={() => setSearchValue("")} size="small">
+                    <ClearIcon />
+                  </IconButton>
+                </InputAdornment>
+              ),
+              sx: { borderRadius: "16px", bgcolor: "background.default" },
+            }}
+          />
+
+          {/* Live match count, directly under the field so the effect of typing is visible
+              without closing the sheet. `aria-live` announces it to screen readers too. */}
+          <Box
+            aria-live="polite"
+            sx={{
+              mt: 1,
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              minHeight: 20,
+              px: 0.5,
+            }}
+          >
+            {isSearching && <CircularProgress size={12} thickness={6} />}
+            <Typography
+              variant="caption"
+              sx={{
+                fontWeight: 600,
+                color: resultCount === 0 && !isSearching ? "warning.main" : "text.secondary",
+              }}
+            >
+              {countLabel}
+            </Typography>
+          </Box>
+        </Box>
 
         {/* Filters Row */}
         <Box sx={{ display: "flex", gap: 1 }}>
-          {/* Styled as a card but exposed as a switch: without these it is an unlabelled
-              div, so its on/off state is invisible to screen readers and it cannot be
-              reached or activated from the keyboard at all. */}
+          {/*
+            A real MUI Switch rather than a card wired up with role="switch".
+            The hand-rolled version was accessible (it carried the right ARIA and key
+            handlers) but gave a sighted user nothing to go on: in the off state it was a
+            plain bordered rectangle, visually identical to a button, so its two-state
+            nature was only discoverable by tapping it. The native control brings the
+            affordance, keyboard support and semantics together for free.
+          */}
           <Paper
             elevation={0}
-            onClick={() => setHasVeg(!hasVeg)}
-            role="switch"
-            aria-checked={hasVeg}
-            aria-label="Veg friendly only"
-            tabIndex={0}
-            onKeyDown={(e: React.KeyboardEvent) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                setHasVeg(!hasVeg);
-              }
-            }}
             sx={{
               flex: 1,
-              p: 1.5,
+              px: 2,
+              py: 0.5,
               borderRadius: "16px",
-              cursor: "pointer",
-              "&:focus-visible": {
+              border: "1px solid",
+              borderColor: hasVeg ? "success.main" : "divider",
+              bgcolor: hasVeg ? alpha("#4caf50", 0.1) : "background.default",
+              transition: "all 0.2s",
+              "&:has(:focus-visible)": {
                 outline: "3px solid",
                 outlineColor: "primary.main",
                 outlineOffset: "2px",
               },
-              border: "1px solid",
-              borderColor: hasVeg ? "success.main" : "divider",
-              bgcolor: hasVeg ? alpha("#4caf50", 0.1) : "background.default",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 1,
-              transition: "all 0.2s",
             }}
           >
-            <RestaurantIcon
-              fontSize="small"
-              color={hasVeg ? "success" : "action"}
+            <FormControlLabel
+              checked={hasVeg}
+              onChange={(_, checked) => setHasVeg(checked)}
+              labelPlacement="start"
+              sx={{ m: 0, width: "100%", justifyContent: "space-between" }}
+              control={<Switch color="success" inputProps={{ "aria-label": "Veg friendly only" }} />}
+              label={
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <RestaurantIcon fontSize="small" color={hasVeg ? "success" : "action"} />
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: "bold",
+                      color: hasVeg ? "success.dark" : "text.secondary",
+                    }}
+                  >
+                    Veg Friendly
+                  </Typography>
+                </Box>
+              }
             />
-            <Typography
-              variant="body2"
-              sx={{
-                fontWeight: "bold",
-                color: hasVeg ? "success.dark" : "text.secondary",
-              }}
-            >
-              Veg Friendly
-            </Typography>
           </Paper>
         </Box>
 

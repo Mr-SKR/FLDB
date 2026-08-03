@@ -78,15 +78,24 @@ const Home: React.FC<HomeProps> = ({ data, canonical, jsonLd }) => {
     hasMore,
     loadMore,
     resetFilters,
-  } = usePlaceFilters(data, userLocation);
+    restoredFeed,
+  } = usePlaceFilters(data, userLocation, feedContainerRef);
 
-  // Auto-scroll to top when location is granted to show the newly sorted first item
+  // Auto-scroll to top when location is granted to show the newly sorted first item.
+  //
+  // Skipped entirely when the feed was restored. Coming back from a place page replays the
+  // stored position, which is indistinguishable here from location being granted for the
+  // first time, and jumping to the top is precisely what the restore exists to prevent.
   useEffect(() => {
+    if (restoredFeed) {
+      prevUserLocation.current = userLocation;
+      return;
+    }
     if (!prevUserLocation.current && userLocation && feedContainerRef.current) {
       feedContainerRef.current.scrollTo({ top: 0, behavior: "smooth" });
     }
     prevUserLocation.current = userLocation;
-  }, [userLocation]);
+  }, [userLocation, restoredFeed]);
 
   // Offer our own prompt only when the browser has not already decided for us.
   // Permission resolution and the "already granted" fetch both live in useGeolocation.
@@ -226,11 +235,13 @@ const Home: React.FC<HomeProps> = ({ data, canonical, jsonLd }) => {
           position: "relative",
         }}
       >
-        {/* Feed Wrapper - Constrains the width and provides relative positioning for FAB */}
+        {/* Feed Wrapper. Constrains the width and provides relative positioning for the FAB.
+            The 500px cap is the phone layout; from `md` up the feed is a grid and wants room
+            for two or three columns, so the cap widens rather than leaving the screen empty. */}
         <Box
           sx={{
             width: "100%",
-            maxWidth: "500px",
+            maxWidth: { xs: "500px", md: "1280px" },
             height: "100%",
             position: "relative",
             display: "flex",
@@ -300,7 +311,11 @@ const Home: React.FC<HomeProps> = ({ data, canonical, jsonLd }) => {
           sx: {
             borderTopLeftRadius: "24px",
             borderTopRightRadius: "24px",
-            maxHeight: "85vh",
+            // Capped so a card stays visible above the sheet. This panel filters the feed
+            // behind it, and at 85vh it covered essentially all of the thing it was
+            // changing, leaving the user no way to see the effect of what they typed.
+            maxHeight: "72vh",
+            overflowY: "auto",
             bgcolor: "background.paper",
             width: "100%",
             maxWidth: "500px",
@@ -308,7 +323,7 @@ const Home: React.FC<HomeProps> = ({ data, canonical, jsonLd }) => {
           }
         }}
       >
-        <Box sx={{ p: 3, pb: 6 }}>
+        <Box sx={{ px: 3, pt: 2, pb: 4 }}>
           {/* Drag handle */}
           <Box sx={{ 
             width: 40, 
@@ -334,6 +349,9 @@ const Home: React.FC<HomeProps> = ({ data, canonical, jsonLd }) => {
             clearLocation={clearLocation}
             hasVeg={hasVeg}
             setHasVeg={setHasVeg}
+            resultCount={filteredPlaces.length}
+            hasMore={hasMore}
+            isSearching={isSearching}
           />
         </Box>
       </SwipeableDrawer>

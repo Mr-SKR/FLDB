@@ -83,26 +83,28 @@ export default async function handler(
         },
       ];
 
-      const compound: Record<string, unknown> = { must };
-
-      if (isVegOnly) {
-        compound.filter = [
-          {
-            equals: {
-              value: true,
-              path: "hasVeg",
-            },
-          },
-        ];
-      }
-
+      /**
+       * The veg filter is applied as a `$match` after `$search`, not as a `compound.filter`
+       * inside it.
+       *
+       * The in-search version used `equals` on `hasVeg`, which silently matched nothing:
+       * `q=dosa` returns 50 places of which 48 are veg, while `q=dosa&veg=true` returned 0.
+       * `equals` requires the path to be indexed with an explicit boolean type in the Atlas
+       * Search index definition, which "default" does not do, and an unindexed path yields
+       * no hits rather than an error. Filtering in the aggregation instead is correct
+       * whatever the index mapping happens to be, and the collection is small enough that
+       * post-filtering a relevance-ordered result set costs nothing noticeable.
+       *
+       * The no-query branch below was never affected: it filters with a plain `$match`.
+       */
       const results = await Place.aggregate([
         {
           $search: {
             index: "default",
-            compound,
+            compound: { must },
           },
         },
+        ...(isVegOnly ? [{ $match: { hasVeg: true } }] : []),
         { $skip: skip },
         { $limit: limitNum },
         {

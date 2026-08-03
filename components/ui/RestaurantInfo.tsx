@@ -11,8 +11,10 @@ import {
   Grade as GradeIcon,
   Directions as DirectionsIcon,
   Phone as PhoneIcon,
+  OpenInNew as OpenInNewIcon,
 } from "@mui/icons-material";
 import { PlaceInterface } from "../../types/types";
+import { stripPlusCode } from "../../utils/formatAddress";
 
 interface RestaurantInfoProps {
   data: PlaceInterface;
@@ -55,7 +57,7 @@ export const RestaurantInfo: React.FC<RestaurantInfoProps> = ({ data }) => {
               Location & Directions
             </Typography>
             <Typography variant="body1" sx={{ fontWeight: 600, lineHeight: 1.5, color: "text.primary", fontSize: { xs: "1rem", sm: "1.1rem" } }}>
-              {data.formatted_address || "Address not available"}
+              {stripPlusCode(data.formatted_address) || "Address not available"}
             </Typography>
           </Box>
         </Box>
@@ -141,7 +143,20 @@ export const RestaurantInfo: React.FC<RestaurantInfoProps> = ({ data }) => {
             >
               Rating
             </Typography>
-            <Typography variant="body2" sx={{ fontWeight: 600, color: "primary.main" }}>
+            {/* Both of these cards are links, and neither looked like one: no underline,
+                no icon, nothing to distinguish them from the static info panels above.
+                The trailing glyph is what marks them as tappable. */}
+            <Typography
+              variant="body2"
+              sx={{
+                fontWeight: 600,
+                color: "primary.main",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 0.5,
+              }}
+            >
               {data.rating ? (
                 <>
                   <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
@@ -150,6 +165,7 @@ export const RestaurantInfo: React.FC<RestaurantInfoProps> = ({ data }) => {
                   <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>
                     {data.rating} / 5
                   </Box>
+                  <OpenInNewIcon sx={{ fontSize: "0.85rem", opacity: 0.7 }} />
                 </>
               ) : "N/A"}
             </Typography>
@@ -201,7 +217,17 @@ export const RestaurantInfo: React.FC<RestaurantInfoProps> = ({ data }) => {
             >
               Contact
             </Typography>
-            <Typography variant="body2" sx={{ fontWeight: 600, color: "text.primary" }}>
+            <Typography
+              variant="body2"
+              sx={{
+                fontWeight: 600,
+                color: data.international_phone_number ? "primary.main" : "text.primary",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 0.5,
+              }}
+            >
               {data.international_phone_number ? (
                 <>
                   <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>

@@ -35,6 +35,7 @@ import {
   NearbyPlace,
 } from "../../services/placeService";
 import { RestaurantInfo } from "../../components/ui/RestaurantInfo";
+import { stripPlusCode } from "../../utils/formatAddress";
 import { Seo } from "../../components/seo/Seo";
 import { JsonLd } from "../../components/seo/JsonLd";
 import { NEARBY_PLACES_COUNT, SITE_NAME } from "../../config/constants";
@@ -307,7 +308,7 @@ const PlacePage: React.FC<PlacePageProps> = ({
                                 mb: 1,
                               }}
                             >
-                              {item.formatted_address}
+                              {stripPlusCode(item.formatted_address)}
                             </Typography>
                           )}
                           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
