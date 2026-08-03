@@ -128,13 +128,21 @@ const SyncPage = () => {
     setLoadingList(true);
     setGlobalError("");
     try {
-      const url = `/api/sync?action=list${token ? `&pageToken=${token}` : ""}&playlistId=${playlistId}`;
-      const res = await fetch(url, {
+      const params = new URLSearchParams({ action: "list", playlistId });
+      if (token) params.set("pageToken", token);
+
+      const res = await fetch(`/api/sync?${params}`, {
         headers: {
           "Authorization": `Bearer ${secret}`
         }
       });
-      if (!res.ok) throw new Error("Failed to fetch list");
+      if (!res.ok) {
+        // Surface what the server said. YouTube failures now propagate instead of being
+        // swallowed into an empty list, so this is the difference between "quota exceeded"
+        // and a playlist that genuinely has no videos.
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.message || `Failed to fetch list (HTTP ${res.status})`);
+      }
       const data = await res.json();
       const mappedVideos = data.videos.map((v: VideoItem) => ({ ...v, syncStatus: "idle" }));
       // Sort unsynced videos to the top
@@ -160,25 +168,37 @@ const SyncPage = () => {
     
     try {
       // Sync mutates state, so it goes over POST (the API rejects GET for this action).
-      const res = await fetch(
-        `/api/sync?action=sync&videoId=${encodeURIComponent(videoId)}&mode=${mode}&isVeg=${isVeg}`,
-        {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${secret}`
-          }
+      const params = new URLSearchParams({
+        action: "sync",
+        videoId,
+        mode,
+        isVeg: String(isVeg),
+      });
+      const res = await fetch(`/api/sync?${params}`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${secret}`
         }
-      );
+      });
       const data = await res.json();
 
-      if (res.ok) {
-        setVideos(prev => prev.map(v => 
-          v.videoId === videoId ? { ...v, syncStatus: "success", isSynced: true } : v
-        ));
-        return true;
-      } else {
+      if (!res.ok) {
         throw new Error(data.message || "Sync failed");
       }
+
+      // A partial sync resolved the video but could not save every place, so it is not
+      // done. Leaving `isSynced` false is what keeps it in the set "Sync Current Page"
+      // will pick up on the next run.
+      if (data.status === "partial") {
+        throw new Error(
+          `${data.placeFailures} of ${data.locationsFound} places failed to save; will retry`
+        );
+      }
+
+      setVideos(prev => prev.map(v =>
+        v.videoId === videoId ? { ...v, syncStatus: "success", isSynced: true } : v
+      ));
+      return true;
     } catch (err: unknown) {
       setVideos(prev => prev.map(v => 
         v.videoId === videoId ? { 

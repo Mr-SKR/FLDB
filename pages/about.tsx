@@ -50,13 +50,13 @@ const faqs = [
     qid: 6,
     title: "Everything has a story behind it. What is the story behind FLDb?",
     description:
-      "My friends and I travel throughout Karnataka quite frequently, and we all agreed that finding great food while on the road is surprisingly difficult. Initially, we thought about manually cataloging every popular restaurant—but we quickly realized we didn't have the time for that! Instead, I decided to build a tool that organizes content from my favorite YouTube channels like Food Lovers TV and FoodyMonk. I found it cumbersome to watch hours of video just to remember a restaurant's name or location, so FLDb was born to solve that exact problem for myself and fellow travelers.",
+      "My friends and I travel throughout Karnataka quite frequently, and we all agreed that finding great food while on the road is surprisingly difficult. Initially, we thought about manually cataloging every popular restaurant, but we quickly realized we didn't have the time for that! Instead, I decided to build a tool that organizes content from my favorite YouTube channels like Food Lovers TV and FoodyMonk. I found it cumbersome to watch hours of video just to remember a restaurant's name or location, so FLDb was born to solve that exact problem for myself and fellow travelers.",
   },
   {
     qid: 7,
     title: "How does FLDb plan to make money?",
     description:
-      "The plan is to not make money. You heard me right—this site is free to all and does not include any ads, paid promotions, or sponsorships. FLDb started as my hobby project, and I intend to keep it that way.",
+      "The plan is to not make money. You heard me right: this site is free to all and does not include any ads, paid promotions, or sponsorships. FLDb started as my hobby project, and I intend to keep it that way.",
   },
   {
     qid: 8,
@@ -125,7 +125,7 @@ function About({ canonical, jsonLd }: AboutProps): React.ReactElement {
   return (
     <React.Fragment>
       <Seo
-        title={`About ${SITE_SHORT_NAME} — How Food Lovers Database Works`}
+        title={`About ${SITE_SHORT_NAME}: How Food Lovers Database Works`}
         description={
           `How ${SITE_NAME} turns food vlogs into a searchable restaurant directory: where the ` +
           `data comes from, how distances are calculated, and why the site is free and ad-free.`
@@ -133,7 +133,7 @@ function About({ canonical, jsonLd }: AboutProps): React.ReactElement {
         canonical={canonical}
       />
       {/* The page is a genuine question-and-answer document, which is exactly what FAQPage
-          markup describes — and it is the one page here eligible for FAQ rich results. */}
+          markup describes, and it is the one page here eligible for FAQ rich results. */}
       <JsonLd data={jsonLd} />
       <ResponsiveDrawer showAbout={false} showThemeToggle={false} />
       <Container maxWidth="md" sx={{ mt: 3, mb: 4 }}>
@@ -145,7 +145,7 @@ function About({ canonical, jsonLd }: AboutProps): React.ReactElement {
           Back to Home
         </Button>
 
-        {/* This page had no h1 at all — only a flat list of accordion questions. */}
+        {/* This page had no h1 at all, only a flat list of accordion questions. */}
         <Typography
           variant="h4"
           component="h1"
@@ -159,7 +159,7 @@ function About({ canonical, jsonLd }: AboutProps): React.ReactElement {
         </Typography>
         <Box
           sx={{
-            justfyContent: "center",
+            justifyContent: "center",
             padding: "0",
           }}
         >

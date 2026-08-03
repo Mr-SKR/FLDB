@@ -1,13 +1,13 @@
 import type { NextApiResponse } from "next";
 import { getAllPlaceSlugs } from "../services/placeService";
-import { SITE_URL } from "../config/constants";
+import { getSiteUrl } from "../lib/seo";
 
 const Sitemap = () => {
   return null;
 };
 
 /**
- * Slugs are already stripped of non-word characters, so this is belt-and-braces — but an
+ * Slugs are already stripped of non-word characters, so this is belt-and-braces, but an
  * unescaped `&` anywhere in a URL makes the whole sitemap invalid XML, and a sitemap that
  * fails to parse is silently dropped in its entirety rather than partially accepted.
  */
@@ -20,7 +20,9 @@ const escapeXml = (value: string): string =>
     .replace(/'/g, "&apos;");
 
 export const getServerSideProps = async ({ res }: { res: NextApiResponse }) => {
-  const BASE_URL = process.env.HOST || SITE_URL;
+  // Shared with the canonical tags rather than re-deriving the origin here: the two
+  // disagreeing is exactly the split-indexing problem canonical tags exist to prevent.
+  const BASE_URL = getSiteUrl();
 
   const places = await getAllPlaceSlugs();
 
@@ -55,7 +57,7 @@ export const getServerSideProps = async ({ res }: { res: NextApiResponse }) => {
   ];
 
   // Place pages are the substance of the site, but priority is *relative* within a
-  // sitemap — marking all 600+ of them 1.0 alongside the home page said nothing at all.
+  // sitemap, so marking all 600+ of them 1.0 alongside the home page said nothing at all.
   const dynamicPaths = places.map(({ slug, updatedAt }) => {
     return {
       url: `${BASE_URL}/place/${slug}`,

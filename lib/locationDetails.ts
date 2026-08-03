@@ -67,7 +67,6 @@ export const fetchLocationDetails = async (description: string) => {
           logger.debug(`Resolved to: ${tracerResult}`, "locationDetails");
           
           let locationURLParams: { ftid?: string; cid?: string; place_id?: string } | null = null;
-          let searchFallback: string | null = null;
 
           const parsedTracerUrl = new URL(tracerResult);
 
@@ -89,21 +88,16 @@ export const fetchLocationDetails = async (description: string) => {
             }
           }
 
-          // 3. Try to extract Place ID or KGID from search parameters
-          if (!locationURLParams) {
-            const kgmid = parsedTracerUrl.searchParams.get("kgmid");
-            if (kgmid) {
-              // kgmid can sometimes be used as a place_id if it starts with /g/ or /m/
-              // but it's safer to use it as a search term or try to resolve it
-              searchFallback = kgmid;
-            }
-          }
-
-          // 4. Capture coordinate-based queries or names for fallback
+          // 3. Pick the text to fall back on if the id-based lookup yields nothing.
+          //
+          // `q` wins over `kgmid` deliberately. `q` is a human search string (a name, an
+          // address, or coordinates), which is what findPlaceFromText actually takes. A
+          // `kgmid` is a Knowledge Graph id (`/g/11abc…`), a poor text query and only worth
+          // trying when there is nothing better. The precedence used to fall out of the
+          // order of two separate assignments rather than being stated.
           const qParam = parsedTracerUrl.searchParams.get("q");
-          if (qParam) {
-            searchFallback = qParam;
-          }
+          const kgmid = locationURLParams ? null : parsedTracerUrl.searchParams.get("kgmid");
+          const searchFallback = qParam || kgmid;
 
           let resolvedPlace: Partial<PlaceData> | null = null;
 
@@ -125,7 +119,7 @@ export const fetchLocationDetails = async (description: string) => {
             }
           } 
           
-          // 5. Fallback: Search by name or coordinates
+          // 4. Fallback: Search by name or coordinates
           if (!resolvedPlace) {
             let searchInput = searchFallback;
             

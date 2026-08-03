@@ -18,7 +18,7 @@ const googleMapsClient = new Client({});
 
 /**
  * Largest size the legacy Place Photos endpoint will serve (maxwidth caps at 1600).
- * More than covers the feed card, which is capped at 500px CSS width — 1600px is still
+ * More than covers the feed card, which is capped at 500px CSS width; 1600px is still
  * sharp on a 3x DPR display.
  */
 const PHOTO_MAX_DIMENSION = 1600;
@@ -113,7 +113,7 @@ const updatePlaceSearchContent = async (place: PlaceInterface) => {
   //    bytes are uploaded with a one-year immutable cache, so without this token a re-synced
   //    photo would never reach anyone: both the browser and Vercel's image cache would keep
   //    serving the previous image at the same URL. Callers must therefore set
-  //    `photoUpdatedAt` before invoking this function — both the sync and backfill paths do.
+  //    `photoUpdatedAt` before invoking this function, and both the sync and backfill paths do.
   const placePhoto =
     photoSrc(place.photoUrl, place.photoUpdatedAt) ||
     (place.placePhotoBase64 && place.placePhotoBase64 !== "none"
@@ -151,7 +151,7 @@ const updatePlaceSearchContent = async (place: PlaceInterface) => {
  * When the base slug is already owned by a *different* place_id we append a deterministic
  * suffix instead.
  *
- * Only ever called when creating a new place — existing slugs are immutable because they
+ * Only ever called when creating a new place, because existing slugs are immutable because they
  * are live URLs referenced by the sitemap and by Disqus threads.
  */
 const buildUniqueSlug = async (name: string, placeId: string): Promise<string> => {
@@ -176,49 +176,86 @@ const buildUniqueSlug = async (name: string, placeId: string): Promise<string> =
   return candidate;
 };
 
-export const getPlaylistVideos = async (playlistId?: string, pageToken?: string) => {
-  logger.info(`Starting to fetch playlist videos from YouTube${playlistId ? ` for playlist ${playlistId}` : ""}`, "syncService");
+/**
+ * Whether a video has already been carried all the way through place resolution.
+ *
+ * `placesResolvedAt` is the real signal, but it only exists on videos written since it was
+ * introduced. Videos that predate it are recognised by the places pointing at them, so
+ * adding this check does not make the next sync reprocess the entire back catalogue. The
+ * only videos that get one extra pass are those that genuinely produced no places, which
+ * is exactly the set worth re-checking once.
+ *
+ * Known limitation of that fallback: a video that saved *some* of its places and failed on
+ * the rest still looks resolved, because places do point at it. Once the catalogue has been
+ * through one full sync every video carries a stamp, at which point the fallback can be
+ * deleted and the stamp becomes authoritative on its own.
+ */
+const hasResolvedPlaces = async (video: { placesResolvedAt?: unknown } | null, videoId: string) => {
+  if (video?.placesResolvedAt) return true;
+  return (await Place.exists({ videoIds: videoId })) !== null;
+};
+
+/** Marks a video's place resolution as complete. See `Video.placesResolvedAt`. */
+const markPlacesResolved = async (videoId: string) => {
+  await Video.updateOne({ videoId }, { $set: { placesResolvedAt: new Date() } });
+};
+
+/**
+ * Withdraws the resolution stamp after an incomplete run.
+ *
+ * Needed because a re-sync of an already-resolved video inherits the previous stamp, so
+ * without clearing it a hard sync that failed halfway would still report as resolved. The
+ * invariant this preserves: a stamp is present only if the most recent attempt finished.
+ */
+const markPlacesUnresolved = async (videoId: string) => {
+  await Video.updateOne({ videoId }, { $unset: { placesResolvedAt: "" } });
+};
+
+/** Same question, asked once for a whole page of videos. */
+const resolvedVideoIds = async (): Promise<Set<string>> => {
+  const [stamped, linked] = await Promise.all([
+    Video.find({ placesResolvedAt: { $exists: true } }, "videoId").lean<{ videoId: string }[]>(),
+    Place.distinct("videoIds") as Promise<string[]>,
+  ]);
+  return new Set([...stamped.map((doc) => doc.videoId), ...linked]);
+};
+
+/**
+ * Fetches one page of a single playlist.
+ *
+ * Deliberately takes a required `playlistId` and returns exactly one page. It previously
+ * accepted no playlist at all, in which case it walked every configured playlist to
+ * exhaustion in one request: dozens of YouTube quota units, and a response the paginated
+ * admin UI could not use anyway. The caller always knows which playlist it wants.
+ *
+ * Errors propagate rather than being logged and swallowed. Swallowing them meant a quota
+ * exhaustion or a bad playlist id returned HTTP 200 with whatever had been collected so
+ * far, which the admin UI rendered as "No videos loaded", indistinguishable from an empty
+ * playlist, and the reason a failed sync looked like a successful no-op.
+ */
+export const getPlaylistVideos = async (playlistId: string, pageToken?: string) => {
+  logger.info(`Fetching playlist videos for playlist ${playlistId}`, "syncService");
   const youtubeKey = env.YOUTUBE_API_KEY;
 
-  let videosInPlayLists: youtube_v3.Schema$PlaylistItem[] = [];
-  let nextPageToken: string | undefined = undefined;
-  let prevPageToken: string | undefined = undefined;
-
-  // Determine which playlists to fetch
-  const targetPlaylistIds = playlistId ? [playlistId] : syncConfig.sources.flatMap(s => s.playlists.map(p => p.id));
   const vegPlaylistIds = syncConfig.sources.flatMap(s => s.playlists.filter(p => p.isVeg).map(p => p.id));
 
-  try {
-    for (const id of targetPlaylistIds) {
-      let currentToken: string | undefined = playlistId ? pageToken : undefined;
-      
-      do {
-        logger.debug(`Fetching items for playlist: ${id}`, "syncService");
-        const response = await youtube.playlistItems.list({
-          key: youtubeKey,
-          part: ["snippet"],
-          playlistId: id,
-          maxResults: 50,
-          pageToken: currentToken,
-        });
+  const response = await youtube.playlistItems.list({
+    key: youtubeKey,
+    part: ["snippet"],
+    playlistId,
+    maxResults: 50,
+    pageToken,
+  });
 
-        videosInPlayLists = videosInPlayLists.concat(response.data.items || []);
-        currentToken = response.data.nextPageToken || undefined;
-        
-        // If a specific playlist was requested, we handle pagination manually by returning the token
-        if (playlistId) {
-          nextPageToken = currentToken;
-          prevPageToken = response.data.prevPageToken || undefined;
-          break; 
-        }
-      } while (currentToken);
-    }
-  } catch (err) {
-    logger.error("Error fetching playlists", "syncService", err);
-  }
+  const videosInPlayLists: youtube_v3.Schema$PlaylistItem[] = response.data.items || [];
+  const nextPageToken = response.data.nextPageToken || undefined;
+  const prevPageToken = response.data.prevPageToken || undefined;
 
   await dbConnect();
-  const existingVideoIds = await Video.find({}, "videoId").lean().then(docs => docs.map(d => d.videoId));
+  // "Synced" must mean fully resolved, not merely recorded. A video whose places failed to
+  // save is still outstanding work, and "Sync Current Page" only processes rows this flag
+  // marks as unsynced, so showing it as done would put it permanently out of reach.
+  const resolved = await resolvedVideoIds();
 
   interface MappedVideo {
     videoId: string;
@@ -248,7 +285,7 @@ export const getPlaylistVideos = async (playlistId?: string, pageToken?: string)
         title: item.snippet?.title,
         thumbnail: item.snippet?.thumbnails?.default?.url,
         isVeg: isVeg,
-        isSynced: existingVideoIds.includes(vId),
+        isSynced: resolved.has(vId),
         channelTitle: item.snippet?.channelTitle,
         channelId: item.snippet?.channelId,
       });
@@ -278,14 +315,28 @@ export const syncSingleVideo = async (videoId: string, mode: "soft" | "hard" = "
       logger.info(`UPGRADING: Video ${videoId} exists but now identified as Veg. Updating hasVeg to true.`, "syncService");
       existingVideo.hasVeg = true;
       await existingVideo.save();
-      
+
       // Update all associated places' hasVeg status
       await Place.updateMany({ videoIds: videoId }, { hasVeg: true });
       return { status: "updated", message: "Video upgraded to Veg status" };
     }
-    
-    logger.info(`SKIPPED: Video ${videoId} already exists in database (Soft Sync)`, "syncService");
-    return { status: "skipped", message: "Video already exists" };
+
+    // Skip on *resolution*, not on the video record existing.
+    //
+    // The video is written before its places (so a description with no Maps link is not
+    // reprocessed on every run), which means the two can disagree: if a place then fails
+    // to save, the video is on file while its restaurants are not. Keying the skip on the
+    // record alone stranded those places permanently, because a soft sync would never look
+    // at the video again and only a hand-run hard sync could recover them.
+    if (await hasResolvedPlaces(existingVideo, videoId)) {
+      logger.info(`SKIPPED: Video ${videoId} already exists in database (Soft Sync)`, "syncService");
+      return { status: "skipped", message: "Video already exists" };
+    }
+
+    logger.info(
+      `RETRYING: Video ${videoId} is recorded but its places were never resolved; reprocessing.`,
+      "syncService"
+    );
   }
 
   try {
@@ -344,8 +395,16 @@ export const syncSingleVideo = async (videoId: string, mode: "soft" | "hard" = "
 
     if (locations.length === 0) {
       logger.info(`SKIPPED: No locations found for video ${videoId}`, "syncService");
+      // Resolving to nothing is a complete outcome, so stamp it. Without this, a video with
+      // no Maps link would look identical to one whose places failed to save and would be
+      // retried on every subsequent sync.
+      await markPlacesResolved(video.id);
       return { status: "skipped", message: "No locations found" };
     }
+
+    // Any place that fails to save leaves this video incomplete, which withholds the
+    // resolution stamp so the next soft sync picks it up again.
+    let placeFailures = 0;
 
     for (const loc of locations) {
       if (!loc.place_id) {
@@ -371,7 +430,7 @@ export const syncSingleVideo = async (videoId: string, mode: "soft" | "hard" = "
         let storedPhoto: StoredPhoto | undefined;
 
         // Only fetch the photo if we don't already have one in blob storage, or on a hard
-        // sync. Keyed on `photoKey` rather than the legacy base64 field — once that field
+        // sync. Keyed on `photoKey` rather than the legacy base64 field, because once that field
         // is cleaned up, keying on it would re-fetch every photo on every sync.
         if (photoRef && (!placeDoc || !placeDoc.photoKey || mode === "hard")) {
           logger.info(`Fetching photo for ${loc.name}${mode === "hard" ? " (Hard Sync)" : ""}`, "syncService");
@@ -393,7 +452,7 @@ export const syncSingleVideo = async (videoId: string, mode: "soft" | "hard" = "
           opening_hours: loc.opening_hours as PlaceInterface["opening_hours"],
           business_status: loc.business_status,
           // NOTE: `slug` is deliberately absent. It is assigned once at creation and never
-          // updated — a hard sync used to Object.assign a name-derived slug over the
+          // updated. A hard sync used to Object.assign a name-derived slug over the
           // existing one, silently changing the public URL of a live page whenever Google
           // edited the place name (breaking inbound links, the sitemap, and Disqus threads).
           thumbnail: videoData.thumbnail,
@@ -438,6 +497,7 @@ export const syncSingleVideo = async (videoId: string, mode: "soft" | "hard" = "
         await placeDoc.save();
 
       } catch (placeErr) {
+        placeFailures += 1;
         // Surface duplicate-key failures explicitly. These used to be swallowed as a
         // generic error, so a colliding place vanished from the database with no signal.
         const code = (placeErr as { code?: number })?.code;
@@ -453,6 +513,17 @@ export const syncSingleVideo = async (videoId: string, mode: "soft" | "hard" = "
       }
     }
 
+    if (placeFailures > 0) {
+      await markPlacesUnresolved(video.id);
+      logger.warn(
+        `SYNC INCOMPLETE for video ${videoId}: ${placeFailures} of ${locations.length} places failed to save. ` +
+        `Leaving it unresolved so the next soft sync retries it.`,
+        "syncService"
+      );
+      return { status: "partial", locationsFound: locations.length, placeFailures };
+    }
+
+    await markPlacesResolved(video.id);
     logger.info(`SYNC COMPLETE for video: ${videoId}`, "syncService");
     return { status: "success", locationsFound: locations.length };
   } catch (error: unknown) {
@@ -464,7 +535,7 @@ export const syncSingleVideo = async (videoId: string, mode: "soft" | "hard" = "
 /**
  * Resolves a *current* photo reference for a place.
  *
- * Photo references are not durable identifiers — Google rotates them. References stored on
+ * Photo references are not durable identifiers; Google rotates them. References stored on
  * existing documents return HTTP 400, so anything re-fetching an old photo must re-resolve
  * first. Verified directly: a stored reference returned 400 while a freshly fetched one for
  * the same place returned 200.
@@ -495,7 +566,7 @@ const fetchCurrentPhotoReference = async (
  * Migrates stored place photos from base64-in-MongoDB to blob storage, at high resolution.
  *
  * Batched and resumable: pass the returned `nextCursor` back in to continue. The stored
- * 480px bytes cannot be upscaled, so each photo is re-downloaded from Google — via a freshly
+ * 480px bytes cannot be upscaled, so each photo is re-downloaded from Google, via a freshly
  * resolved reference, since the stored ones have expired.
  *
  * Non-destructive: a place that cannot be migrated keeps its existing base64 image and is
@@ -571,7 +642,7 @@ export const backfillPlacePhotos = async (limit = 25, cursor?: string) => {
 /**
  * Reclaims database space by unsetting the legacy base64 field.
  *
- * Deliberately separate from the backfill and destructive — only run once the migrated
+ * Deliberately separate from the backfill and destructive: only run once the migrated
  * images have been confirmed to render. Only touches places that already have a photoKey.
  */
 export const cleanupPlacePhotoBlobs = async () => {

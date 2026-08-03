@@ -46,7 +46,7 @@ interface FoodCardProps {
 const isYouTubeThumbnail = (url: string): boolean => url.includes("i.ytimg.com");
 
 /**
- * Google returns attributions as HTML anchors. Render the text only — injecting third-party
+ * Google returns attributions as HTML anchors. Render the text only. Injecting third-party
  * HTML into the page is not worth the XSS surface for a credit line.
  */
 const attributionText = (attributions?: string[]): string =>
@@ -322,7 +322,8 @@ export default function FoodCard(props: FoodCardProps): React.ReactElement {
           </NextLink>
         </Typography>
 
-        {ratingValue && (
+        {/* An explicit type check, not truthiness: `{0 && …}` renders a stray "0". */}
+        {typeof ratingValue === "number" && (
           <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
             <Rating value={ratingValue} readOnly precision={0.1} size="small" />
             <Typography variant="body2" sx={{ fontWeight: "bold", opacity: 0.9 }}>
@@ -371,7 +372,7 @@ export default function FoodCard(props: FoodCardProps): React.ReactElement {
           )}
 
           <Chip
-            // Distinguish "no location yet" from a genuine 0 km — a place you are
+            // Distinguish "no location yet" from a genuine 0 km: a place you are
             // standing next to used to render as "Distance".
             label={
               props.useLocation && Number.isFinite(props.displacement)

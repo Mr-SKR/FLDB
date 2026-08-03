@@ -15,7 +15,7 @@ import { env } from "./env";
 
 const PLACE_PHOTO_PREFIX = "places";
 
-/** One year — the bytes at a given key+version never change. */
+/** One year; the bytes at a given key+version never change. */
 const IMMUTABLE_MAX_AGE = 31_536_000;
 
 export const placePhotoKey = (placeId: string): string =>
@@ -50,7 +50,7 @@ export const uploadPlacePhoto = async (
  * Builds the URL to render for a stored photo.
  *
  * `version` (the photo's updatedAt timestamp) busts caches only when the underlying
- * image actually changed, leaving the key — and therefore the cached transformation —
+ * image actually changed, leaving the key (and therefore the cached transformation)
  * stable the rest of the time.
  */
 export const photoSrc = (

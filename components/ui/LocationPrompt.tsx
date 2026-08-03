@@ -86,7 +86,17 @@ export const LocationPrompt: React.FC<LocationPromptProps> = ({
             borderColor: (theme) => alpha(theme.palette.success.main, 0.3)
           }}
         >
-          <b>Privacy:</b> Your location is processed only on your device. We never store or share it.
+          {/*
+            Must not claim the coordinates stay on the device: they are sent to our search
+            API to rank results, which is why the original "processed only on your device"
+            was replaced. Saying what the location is for, and that nothing outlives the
+            tab, reassures without the false claim.
+          */}
+          {/* Explicit {" "}: a line break after </b> would make JSX strip the leading
+              whitespace, silently closing the gap to "Privacy:Used". */}
+          <b>Privacy:</b>{" "}
+          Used only to show you what&apos;s nearest. No ads, no tracking, no profile.
+          Gone when you close the tab.
         </Typography>
       </DialogContent>
       <DialogActions sx={{ flexDirection: "column", gap: 1, px: 3, pb: 3 }}>

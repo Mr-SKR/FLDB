@@ -26,7 +26,7 @@ export const usePlaceFilters = (initialData: PlaceInterface[], userLocation: Use
   const requestIdRef = useRef(0);
 
   // Depend on the coordinates themselves rather than the location object. A new object
-  // identity with unchanged coordinates must never trigger a refetch — that would
+  // identity with unchanged coordinates must never trigger a refetch, because that would
   // replace the accumulated feed with page 1 and lose the user's scroll progress.
   const lat = userLocation?.lat;
   const lng = userLocation?.long;
@@ -102,7 +102,7 @@ export const usePlaceFilters = (initialData: PlaceInterface[], userLocation: Use
     } catch (err) {
       logger.error("Fetch failed", "usePlaceFilters", err);
     } finally {
-      // Only the newest request owns the loading flags — a superseded one clearing them
+      // Only the newest request owns the loading flags; a superseded one clearing them
       // would hide the spinner while its replacement is still in flight.
       if (requestId === requestIdRef.current) {
         setIsInitialLoading(false);
@@ -145,7 +145,7 @@ export const usePlaceFilters = (initialData: PlaceInterface[], userLocation: Use
    *
    * `debouncedSearch` is reset alongside `searchValue` so the refetch fires immediately
    * rather than after the 500ms typing debounce. The sessionStorage sync effects above
-   * pick these up, which is what makes the reset survive — the empty state previously
+   * pick these up, which is what makes the reset survive. The empty state previously
    * called `window.location.reload()`, and the reloaded page simply restored the same
    * filters from sessionStorage and landed the user right back on the empty state.
    */

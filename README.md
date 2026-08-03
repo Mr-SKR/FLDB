@@ -60,9 +60,14 @@ Create a `.env` file in the root directory:
 MONGODB_URI=your_mongodb_connection_string
 NEXT_PUBLIC_DISQUS_SHORTNAME=your_disqus_shortname
 
-# Optional: canonical public origin, used for the sitemap and Disqus thread URLs.
+# Optional: canonical public origin, used for canonical tags, Open Graph URLs,
+# the sitemap and Disqus thread URLs.
 # Defaults to https://foodloversdatabase.com when unset.
-HOST=https://your-domain.com
+#
+# The legacy name `HOST` is still read as a fallback, but prefer this one: many Node
+# hosts set HOST to the bind address, and a HOST=0.0.0.0 would silently rewrite every
+# canonical URL on the site.
+NEXT_PUBLIC_SITE_URL=https://your-domain.com
 
 # Database Sync Configuration
 YOUTUBE_API_KEY=your_youtube_api_key
@@ -103,13 +108,13 @@ The database is populated by a multi-step synchronization process that interface
 > ### ⚠️ `SYNC_SECRET` is deliberately NOT set on the production deployment
 >
 > Syncing is run **locally**, against the production database. Because the deployed app has
-> no `SYNC_SECRET`, `/api/sync` returns `503` for every action — before authentication and
+> no `SYNC_SECRET`, `/api/sync` returns `503` for every action, before authentication and
 > before any Google-touching code runs. The deployed site therefore **cannot consume Google
 > API quota**; the only Google calls ever made are the ones you trigger yourself from your
 > machine.
 >
 > If you ever automate syncing (a Vercel Cron picking up new videos, for example) you would
-> have to set `SYNC_SECRET` in the deployment — and at that point its strength matters a
+> have to set `SYNC_SECRET` in the deployment, and at that point its strength matters a
 > great deal, since it becomes the only thing protecting an endpoint that spends your Google
 > budget and writes to your database. Generate a strong one:
 >
@@ -126,11 +131,11 @@ The database is populated by a multi-step synchronization process that interface
 
 All sync requests must be authorized using the `SYNC_SECRET` defined in your environment variables. For security, authorization is strictly handled via headers to avoid leaking secrets in server logs or browser history.
 - **Header:** `Authorization: Bearer YOUR_SYNC_SECRET`
-- The secret is compared in constant time, and the endpoint is rate limited per IP (both before and after authentication). Note that the limiter is in-memory, so on serverless platforms it is per-instance and best-effort — use Vercel Firewall rules or an external counter if you need a hard global limit.
+- The secret is compared in constant time, and the endpoint is rate limited per IP (both before and after authentication). Note that the limiter is in-memory, so on serverless platforms it is per-instance and best-effort. Use Vercel Firewall rules or an external counter if you need a hard global limit.
 
 The public `/api/search` endpoint is rate limited on the same mechanism (60 requests per minute
-per IP), which is far above real use — a debounced search is one request and infinite scroll
-adds one per page — but bounds the only endpoint an anonymous caller can drive.
+per IP), which is far above real use (a debounced search is one request and infinite scroll
+adds one per page), but it bounds the only endpoint an anonymous caller can drive.
 
 Client IPs are resolved from `x-vercel-forwarded-for` / `x-real-ip`, falling back to the *last*
 entry of `x-forwarded-for`. The first entry is deliberately not used: it is whatever the client
@@ -151,7 +156,8 @@ curl -H "Authorization: Bearer YOUR_SECRET" "http://localhost:3000/api/sync?acti
 ```
 
 #### 2. List Videos
-Fetch a paginated list of videos from a specific YouTube playlist.
+Fetch a page of videos from a specific YouTube playlist. `playlistId` is required. One
+request returns one page of 50, along with `nextPageToken`/`prevPageToken` to page with.
 ```bash
 curl -H "Authorization: Bearer YOUR_SECRET" "http://localhost:3000/api/sync?action=list&playlistId=PLAYLIST_ID"
 ```
@@ -164,6 +170,11 @@ Trigger a deep sync for a specific video. This extracts location data and enrich
 ```bash
 curl -X POST -H "Authorization: Bearer YOUR_SECRET" "http://localhost:3000/api/sync?action=sync&videoId=VIDEO_ID&mode=soft&isVeg=true"
 ```
+
+Returns `status: "success"` when the video and all of its places were saved,
+`"skipped"` when there was nothing to do, or `"partial"` when some places failed. A
+partial video is deliberately left unmarked so the next soft sync retries it, rather
+than being recorded as done with its restaurants missing.
 
 ## 🖼️ Place Photo Storage
 
@@ -180,7 +191,7 @@ thumbnail rather than showing a broken image.
 
 ### Backfill
 
-Migrating existing places re-fetches each photo from Google at the new resolution — the
+Migrating existing places re-fetches each photo from Google at the new resolution, because the
 stored 480px bytes cannot be upscaled. The endpoint is batched and resumable:
 
 ```bash
@@ -197,7 +208,7 @@ Places whose `photoReference` has expired keep their existing image and are list
 `failures`; recover those with a hard sync of the relevant video.
 
 Once you have confirmed the migrated images render correctly, reclaim the database space.
-**This is destructive and irreversible** — it drops the legacy base64 field:
+**This is destructive and irreversible.** It drops the legacy base64 field:
 
 ```bash
 curl -X POST -H "Authorization: Bearer YOUR_SECRET" \
@@ -207,7 +218,7 @@ curl -X POST -H "Authorization: Bearer YOUR_SECRET" \
 ### When synced data appears on the live site
 
 Pages are served via ISR and revalidate **hourly** (`/` and `/place/[slug]`). Because syncing
-runs locally against the production database, the deployment never learns that data changed —
+runs locally against the production database, the deployment never learns that data changed,
 and on-demand revalidation can't help, since calling it from your machine invalidates your
 local cache rather than the deployment's. The revalidate timer is therefore the mechanism by
 which a sync becomes visible in production.
@@ -219,7 +230,7 @@ Two things soften this in practice:
 - New places get their page generated on first request (`fallback: true`), so they don't wait
   for a revalidation window.
 
-If you want a sync reflected immediately, trigger a **Vercel Deploy Hook** after running it —
+If you want a sync reflected immediately, trigger a **Vercel Deploy Hook** after running it;
 a rebuild regenerates every page from current data.
 
 ## 🖥️ Sync Management Interface

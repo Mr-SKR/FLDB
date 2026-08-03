@@ -7,11 +7,38 @@ import { getDisplacementFromLatLonInKm } from "../utils/getGeoDisplacement";
 
 /**
  * Fields needed to render a feed card. Deliberately excludes `searchContent` and the
- * legacy `placePhotoBase64` — neither is rendered, and shipping them was the bulk of the
+ * legacy `placePhotoBase64`. Neither is rendered, and shipping them was the bulk of the
  * page weight.
+ *
+ * Single source of truth: `/api/search` renders the same cards from an aggregation and
+ * previously repeated this list twice more in its own file, so a field added for the card
+ * had to be remembered in three places or the feed would render it only on the
+ * server-rendered first page.
  */
-const LIST_FIELDS =
-  "_id place_id name slug geometry hasVeg thumbnail allThumbnails formatted_address rating url photoUrl photoUpdatedAt photoAttribution";
+const LIST_FIELD_NAMES = [
+  "_id",
+  "place_id",
+  "name",
+  "slug",
+  "geometry",
+  "hasVeg",
+  "thumbnail",
+  "allThumbnails",
+  "formatted_address",
+  "rating",
+  "url",
+  "photoUrl",
+  "photoUpdatedAt",
+  "photoAttribution",
+] as const;
+
+/** Space-separated form, for `Model.find(filter, fields)`. */
+const LIST_FIELDS = LIST_FIELD_NAMES.join(" ");
+
+/** `$project` form, for aggregation pipelines. */
+export const LIST_PROJECTION: Record<string, 1> = Object.fromEntries(
+  LIST_FIELD_NAMES.map((field) => [field, 1])
+);
 
 /**
  * Fields needed by the place detail page. Note it does not render the place photo at all,
@@ -26,7 +53,9 @@ export const getPlacesPaginated = async (page: number = 1, limit: number = 10): 
   const skip = (page - 1) * limit;
   
   const [places, total] = await Promise.all([
-    Place.find({}, fields).sort({ name: 1 }).skip(skip).limit(limit).lean(),
+    // `_id` breaks ties: names are not unique (chains), and this shares its ordering with
+    // /api/search, which pages through the same list.
+    Place.find({}, fields).sort({ name: 1, _id: 1 }).skip(skip).limit(limit).lean(),
     Place.countDocuments({})
   ]);
 
@@ -74,7 +103,7 @@ interface GeoIndexEntry {
  *
  * `getNearbyPlaces` is called once per place page, so at build time that is 600+ calls.
  * Doing a database round trip (let alone a full aggregation) per call would add minutes to
- * the build; instead the whole set is loaded once per worker process — a few hundred KB —
+ * the build; instead the whole set is loaded once per worker process (a few hundred KB)
  * and the nearest neighbours are computed in memory.
  *
  * The TTL matters for ISR: a long-lived serverless instance revalidating pages would
@@ -122,10 +151,13 @@ const loadGeoIndex = (): Promise<GeoIndexEntry[]> => {
       }));
   })();
 
-  geoIndexCache = { loadedAt: now, entries };
+  const cacheEntry = { loadedAt: now, entries };
+  geoIndexCache = cacheEntry;
   // A failed load must not be cached, or every subsequent page in this worker inherits it.
+  // Only clear it if this load is still the cached one, because a concurrent load that already
+  // succeeded must not have its result thrown away by an older failure.
   entries.catch(() => {
-    geoIndexCache = null;
+    if (geoIndexCache === cacheEntry) geoIndexCache = null;
   });
 
   return entries;
@@ -136,7 +168,7 @@ const loadGeoIndex = (): Promise<GeoIndexEntry[]> => {
  *
  * This exists for internal linking as much as for readers. Previously the only outbound
  * link from a place page was "back to home", so the 600+ place pages formed no link graph
- * at all — they were reachable solely from the sitemap, which gives a crawler no signal
+ * at all: they were reachable solely from the sitemap, which gives a crawler no signal
  * about how they relate or which are important. Cross-linking neighbours turns the site
  * into a connected graph and gives every page inbound links from topically related pages.
  */

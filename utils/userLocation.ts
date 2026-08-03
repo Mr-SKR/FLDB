@@ -4,7 +4,7 @@ import { logger } from "../lib/logger";
  * Fast profile: accepts a recent cached fix and does not power up GPS.
  *
  * Ranking restaurants by distance does not need metre-level precision, and forcing a
- * fresh high-accuracy fix (maximumAge: 0) costs several seconds on every page load —
+ * fresh high-accuracy fix (maximumAge: 0) costs several seconds on every page load,
  * during which the feed can only show the default, non-local ordering.
  */
 const geoSettingsFast: PositionOptions = {

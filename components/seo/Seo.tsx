@@ -20,7 +20,7 @@ interface SeoProps {
  * Page-level SEO tags.
  *
  * Every tag carries a `key` so that `next/head` de-duplicates against the site-wide
- * defaults in `_app.tsx` — without keys, a page-level description is appended alongside
+ * defaults in `_app.tsx`. Without keys, a page-level description is appended alongside
  * the default rather than replacing it, and search engines see two competing values.
  *
  * The canonical tag is the reason this component exists at all: the site is reachable on

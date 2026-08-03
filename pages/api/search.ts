@@ -4,13 +4,14 @@ import Place from "../../models/Place";
 import { serializeDocuments } from "../../utils/serialize";
 import { logger } from "../../lib/logger";
 import { PAGE_SIZE } from "../../config/constants";
+import { LIST_PROJECTION } from "../../services/placeService";
 import { rateLimit, getClientKey } from "../../lib/rateLimit";
 
 /**
  * Per-IP budget for the public search endpoint.
  *
- * Generous relative to real use — a debounced search is one request, and infinite scroll
- * adds one per page — but it caps the one endpoint an anonymous caller can drive. With
+ * Generous relative to real use (a debounced search is one request, and infinite scroll
+ * adds one per page), but it caps the one endpoint an anonymous caller can drive. With
  * coordinates present the query is an unindexed aggregation that scans every place and
  * sorts in memory, so unbounded concurrency is the realistic availability risk here.
  *
@@ -18,6 +19,9 @@ import { rateLimit, getClientKey } from "../../lib/rateLimit";
  */
 const SEARCH_LIMIT = 60;
 const SEARCH_WINDOW_MS = 60_000;
+
+/** Highest page a caller may request. See the bounding comment in the handler. */
+const MAX_PAGE = 1000;
 
 export default async function handler(
   req: NextApiRequest,
@@ -51,10 +55,16 @@ export default async function handler(
     Math.abs(lngNum) <= 180;
 
   // Security: Bound parameters to prevent DoS
+  //
+  // `page` is capped as well as floored. A large `$skip` still requires the stages before
+  // it to run in full, so an unbounded page number is a free way to make the caller pay
+  // nothing and the database pay for a whole scan-and-sort. 1000 pages is far beyond any
+  // reachable position in a feed of a few hundred places.
   if (pageNum < 1) pageNum = 1;
+  if (pageNum > MAX_PAGE) pageNum = MAX_PAGE;
   if (limitNum < 1) limitNum = PAGE_SIZE;
   if (limitNum > 50) limitNum = 50;
-  
+
   const skip = (pageNum - 1) * limitNum;
 
   logger.debug("Search query received", "searchAPI", { q, veg, page, limit, lat, lng });
@@ -62,25 +72,7 @@ export default async function handler(
   try {
     await dbConnect();
 
-    const fields = {
-      _id: 1,
-      place_id: 1,
-      name: 1,
-      slug: 1,
-      geometry: 1,
-      hasVeg: 1,
-      thumbnail: 1,
-      allThumbnails: 1,
-      formatted_address: 1,
-      rating: 1,
-      url: 1,
-      photoUrl: 1,
-      photoUpdatedAt: 1,
-      photoAttribution: 1
-    };
-
     if (q && typeof q === "string") {
-      // ... existing search logic ...
       const must: Record<string, unknown>[] = [
         {
           text: {
@@ -115,20 +107,7 @@ export default async function handler(
         { $limit: limitNum },
         {
           $project: {
-            _id: 1,
-            place_id: 1,
-            name: 1,
-            slug: 1,
-            geometry: 1,
-            hasVeg: 1,
-            thumbnail: 1,
-            allThumbnails: 1,
-            formatted_address: 1,
-            rating: 1,
-            url: 1,
-            photoUrl: 1,
-            photoUpdatedAt: 1,
-            photoAttribution: 1,
+            ...LIST_PROJECTION,
             score: { $meta: "searchScore" },
           },
         },
@@ -151,7 +130,7 @@ export default async function handler(
         //
         // The proper fix is a `2dsphere` index on `geometry.location` plus a `$geoNear`
         // stage, which would also make this indexed rather than a collection scan. That
-        // requires creating the index on the cluster first — see README.
+        // requires creating the index on the cluster first; see README.
         const lngScale = Math.cos((latNum * Math.PI) / 180);
 
         results = await Place.aggregate([
@@ -178,14 +157,31 @@ export default async function handler(
               }
             }
           },
-          { $sort: { displacement: 1 } },
+          // Project BEFORE sorting, not after.
+          //
+          // `$sort` is a blocking stage: it holds every matched document in memory, and
+          // without `allowDiskUse` it fails outright past 100 MB. Sorting whole documents
+          // meant carrying `searchContent` (10 KB each) and, for any place the blob
+          // backfill has not reached, `placePhotoBase64` (~255 KB each) through the sort.
+          // A few hundred unmigrated places is enough to blow the limit and take down the
+          // one query every located visitor makes.
+          { $project: { ...LIST_PROJECTION, displacement: 1 } },
+          // `_id` breaks ties. `displacement` is not unique, and each page is a separate
+          // query, so without a deterministic tiebreaker MongoDB may order equidistant
+          // places differently between page 1 and page 2, which shows up as a place
+          // appearing twice in the feed (and a duplicate React key) or being skipped.
+          { $sort: { displacement: 1, _id: 1 } },
           { $skip: skip },
           { $limit: limitNum },
-          { $project: fields }
+          // Drop the sort key now that the page is resolved, so the response shape matches
+          // the other branches. Only `limitNum` documents reach this stage.
+          { $project: LIST_PROJECTION }
         ]);
       } else {
-        results = await Place.find(filter, fields)
-          .sort({ name: 1 })
+        // `_id` breaks ties here too: restaurant names are not unique (chains), so paging
+        // an ambiguous `name` ordering can repeat or drop rows.
+        results = await Place.find(filter, LIST_PROJECTION)
+          .sort({ name: 1, _id: 1 })
           .skip(skip)
           .limit(limitNum)
           .lean();

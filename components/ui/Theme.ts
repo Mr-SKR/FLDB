@@ -94,7 +94,7 @@ export const theme = extendTheme({
          * subtitle1 an `<h5>`), which silently produced a broken outline: the place page
          * emitted two `<h1>`s because "Comments & Discussion" is styled h5, the location
          * dialog nested an `<h1>` inside MUI's own `<h2>`, and the home feed had no `<h1>`
-         * at all — only a run of `<h4>` card titles.
+         * at all, only a run of `<h4>` card titles.
          */
         variantMapping: {
           h1: "h1",

@@ -1,12 +1,12 @@
 /**
  * SEO helpers: canonical URLs, SERP copy, and schema.org JSON-LD builders.
  *
- * Deliberately dependency-free apart from types and constants — this module is imported by
+ * Deliberately dependency-free apart from types and constants, because this module is imported by
  * both `getStaticProps` and client components, so it must not pull in `lib/env` (which
  * throws at import time without a database URL) or anything Node-only.
  *
  * Guiding rule for the JSON-LD builders: never emit a property we cannot substantiate.
- * Structured data that claims more than the data supports is worse than none — Google
+ * Structured data that claims more than the data supports is worse than none. Google
  * rejects invalid markup and repeated violations put rich results at risk for the whole
  * site. Every optional field below is therefore conditional on the data actually existing.
  */
@@ -22,12 +22,19 @@ import {
 /**
  * Canonical origin for the current deployment, without a trailing slash.
  *
- * Server-side only in practice: `process.env.HOST` is undefined in the browser, which is
- * fine because every caller resolves this during `getStaticProps` and passes the result
- * down as a prop.
+ * Prefer `NEXT_PUBLIC_SITE_URL`. `HOST` is still read for compatibility with existing
+ * deployments, but it is a dangerous name to depend on: on many Node hosts and process
+ * managers `HOST` is the *bind address*, so a platform setting `HOST=0.0.0.0` would
+ * silently rewrite every canonical tag, `og:url`, sitemap entry and Disqus thread URL to
+ * `0.0.0.0/…`, an SEO failure that throws no error and looks fine locally.
+ *
+ * Server-side only in practice, since every caller resolves this during `getStaticProps`
+ * and passes the result down as a prop. `NEXT_PUBLIC_` is nonetheless the correct prefix:
+ * it makes the value available if a client component ever needs it, which the bare name
+ * would not.
  */
 export const getSiteUrl = (): string =>
-  (process.env.HOST || SITE_URL).replace(/\/+$/, "");
+  (process.env.NEXT_PUBLIC_SITE_URL || process.env.HOST || SITE_URL).replace(/\/+$/, "");
 
 /** Joins a path onto the site origin, producing the absolute URL canonical tags require. */
 export const absoluteUrl = (siteUrl: string, path: string): string =>
@@ -58,7 +65,7 @@ const DESCRIPTION_MAX = 158;
  */
 export const buildPlaceTitle = (name: string): string => {
   const suffix = ` | ${SITE_SHORT_NAME}`;
-  const qualifier = " — Reviews & Directions";
+  const qualifier = ": Reviews & Directions";
 
   if (`${name}${qualifier}${suffix}`.length <= TITLE_MAX) {
     return `${name}${qualifier}${suffix}`;
@@ -70,8 +77,8 @@ export const buildPlaceTitle = (name: string): string => {
 /**
  * Reduces a full Google address to the city/region tail people actually search by.
  *
- * A `formatted_address` is typically ~100 characters — "1004, 26th Main Rd, 4th T Block
- * East, Jayanagara 9th Block, Jayanagar, Bengaluru, Karnataka 560041, India" — which on its
+ * A `formatted_address` is typically ~100 characters ("1004, 26th Main Rd, 4th T Block
+ * East, Jayanagara 9th Block, Jayanagar, Bengaluru, Karnataka 560041, India"), which on its
  * own consumes the entire meta description budget and pushes out the rating and review
  * count that actually earn the click. The street number belongs in the structured data,
  * not the snippet.
@@ -99,7 +106,7 @@ export const shortLocality = (formattedAddress?: string): string | undefined => 
  * Builds a place page meta description from the fields we genuinely hold.
  *
  * The previous description was "Explore {name} on Food Lovers Database (FLDb)" for every
- * one of the 600+ place pages — near-duplicate boilerplate that gives a search engine no
+ * one of the 600+ place pages: near-duplicate boilerplate that gives a search engine no
  * reason to rank one page over another and gives a searcher no reason to click.
  */
 export const buildPlaceDescription = (place: PlaceInterface, videoCount: number): string => {
@@ -161,7 +168,7 @@ export const buildPlaceDescription = (place: PlaceInterface, videoCount: number)
  * scanning all 4,116 stored lines:
  *
  *  - The opening time frequently carries no meridiem and inherits it from the closing
- *    time — `"6:30 – 11:00 AM"` means 06:30–11:00, while `"12:30 – 8:30 PM"` means
+ *    time. For example, `"6:30 – 11:00 AM"` means 06:30–11:00, while `"12:30 – 8:30 PM"` means
  *    12:30–20:30. Reading a bare `6:30` as 06:30 by default would be wrong half the time.
  *  - The strings contain U+2013 EN DASH, U+2009 THIN SPACE and U+202F NARROW NO-BREAK
  *    SPACE rather than ASCII equivalents.
@@ -185,7 +192,14 @@ export interface OpeningHoursSpecification {
   closes: string;
 }
 
-/** Folds the typographic whitespace and dashes Google emits down to ASCII. */
+/**
+ * Folds the typographic whitespace and dashes Google emits down to ASCII.
+ *
+ * The non-ASCII characters in the two character classes below are DATA, not prose: they are
+ * the exact bytes Google puts in `weekday_text`, and this is the only thing that recognises
+ * them. Do not "clean them up" to ASCII equivalents, or every opening-hours range stops
+ * parsing and the site silently emits no `openingHoursSpecification` at all.
+ */
 const normalizeHoursText = (value: string): string =>
   value
     .replace(/[   ]/g, " ")
@@ -228,7 +242,7 @@ const minutesOf = (value: string): number => {
 
 /**
  * Parses one `weekday_text` entry into zero or more specifications.
- * Returns an empty array for closed days and for anything it cannot parse confidently —
+ * Returns an empty array for closed days and for anything it cannot parse confidently;
  * omitting a day is always safer than guessing at it.
  */
 const parseWeekdayLine = (line: string): OpeningHoursSpecification[] => {
@@ -262,7 +276,7 @@ const parseWeekdayLine = (line: string): OpeningHoursSpecification[] => {
     let opens = to24Hour(open, open.meridiem ?? close.meridiem);
 
     // An inherited meridiem that puts opening after closing means the range straddles
-    // noon — "11:30 - 12:30 PM" opens in the morning. Flip it back.
+    // noon: "11:30 - 12:30 PM" opens in the morning. Flip it back.
     if (!open.meridiem && minutesOf(opens) > minutesOf(closes)) {
       opens = to24Hour(open, close.meridiem === "PM" ? "AM" : "PM");
     }
@@ -285,7 +299,7 @@ export const buildOpeningHoursSpecification = (
 export type JsonLd = Record<string, unknown>;
 
 /**
- * `Restaurant` markup for a place page — the highest-value structured data on the site,
+ * `Restaurant` markup for a place page, the highest-value structured data on the site,
  * since it is what lets a restaurant page qualify for local and rich results.
  *
  * Two properties are deliberately conditional:
@@ -336,7 +350,7 @@ export const buildRestaurantJsonLd = ({
   }
 
   // The Google Maps listing is the same real-world entity, which is exactly what `sameAs`
-  // is for — it helps search engines reconcile this page with the known business.
+  // is for: it helps search engines reconcile this page with the known business.
   if (place.url) jsonLd.sameAs = [place.url];
 
   const openingHours = buildOpeningHoursSpecification(place.opening_hours?.weekday_text);

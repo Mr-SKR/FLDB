@@ -10,11 +10,11 @@ import { syncConfig } from "../../config/syncConfig";
 import { logger } from "../../lib/logger";
 import { rateLimit, getClientKey } from "../../lib/rateLimit";
 
-/** Tight budget applied before authentication — guards against brute-forcing the secret. */
+/** Tight budget applied before authentication; guards against brute-forcing the secret. */
 const PRE_AUTH_LIMIT = 10;
 const PRE_AUTH_WINDOW_MS = 60_000;
 
-/** Looser budget applied after authentication — caps third-party API spend if the secret leaks. */
+/** Looser budget applied after authentication; caps third-party API spend if the secret leaks. */
 const POST_AUTH_LIMIT = 30;
 const POST_AUTH_WINDOW_MS = 60_000;
 
@@ -32,7 +32,7 @@ const MIN_PRODUCTION_SECRET_LENGTH = 16;
 /**
  * Resolves the sync secret, or null when sync is disabled for this deployment.
  *
- * By design `SYNC_SECRET` is NOT set on the production deployment — syncing is run locally
+ * By design `SYNC_SECRET` is NOT set on the production deployment, because syncing is run locally
  * against the production database. That makes this endpoint inert once deployed: it can
  * neither spend Google API quota nor write to the database or blob store.
  *
@@ -46,7 +46,7 @@ const resolveSyncSecret = (): { secret: string } | { disabled: true; reason: str
   const secret = process.env.SYNC_SECRET;
 
   if (!secret) {
-    return { disabled: true, reason: "SYNC_SECRET is not set — sync is disabled here" };
+    return { disabled: true, reason: "SYNC_SECRET is not set, so sync is disabled here" };
   }
 
   if (process.env.NODE_ENV === "production" && secret.length < MIN_PRODUCTION_SECRET_LENGTH) {
@@ -141,9 +141,18 @@ export default async function handler(
     }
 
     if (action === "list") {
-      logger.info("Executing list action", "syncAPI");
       const pageToken = req.query.pageToken as string | undefined;
       const playlistId = req.query.playlistId as string | undefined;
+
+      // Required, not optional. Omitting it used to mean "every configured playlist",
+      // which walked all of them to exhaustion in a single request: dozens of YouTube
+      // quota units spent on a response the paginated UI cannot use.
+      if (!playlistId) {
+        logger.warn("List action requested without playlistId", "syncAPI");
+        return res.status(400).json({ message: "playlistId is required for list action" });
+      }
+
+      logger.info(`Executing list action for playlist ${playlistId}`, "syncAPI");
       const result = await getPlaylistVideos(playlistId, pageToken);
       return res.status(200).json(result);
     }

@@ -93,7 +93,7 @@ export const FeedViewer: React.FC<FeedViewerProps> = ({
             We couldn&apos;t find any restaurants matching your current filters.
           </Typography>
           {/* A real button rather than a clickable Typography: this is keyboard-focusable
-              and announced as a control. It resets the filter state directly — the previous
+              and announced as a control. It resets the filter state directly. The previous
               `window.location.reload()` did nothing useful, since the filters are persisted
               in sessionStorage and were simply restored on the way back up. */}
           <Button

@@ -17,7 +17,7 @@ const PlaceSchema = new Schema<PlaceInterface>({
   },
   international_phone_number: String,
   // Google always returns a numeric rating, and every stored document is already a
-  // double or int — `Mixed` only removed the cast that would keep it that way.
+  // double or int; `Mixed` only removed the cast that would keep it that way.
   rating: Number,
   /** Google review count. Needed to emit a valid schema.org AggregateRating. */
   user_ratings_total: Number,
@@ -41,7 +41,7 @@ const PlaceSchema = new Schema<PlaceInterface>({
   placePhotoBase64: String,
   /** Stable blob path, e.g. "places/<place_id>.webp". Survives a provider change. */
   photoKey: String,
-  /** Public URL of the stored photo — what the frontend renders. */
+  /** Public URL of the stored photo: what the frontend renders. */
   photoUrl: String,
   /** Bumped when the photo bytes change; used purely to bust caches. */
   photoUpdatedAt: Date,

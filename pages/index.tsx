@@ -58,10 +58,13 @@ const Home: React.FC<HomeProps> = ({ data, canonical, jsonLd }) => {
     permissionState,
     locationPending,
     refreshLocation,
+    clearError,
     clearLocation,
   } = useGeolocation();
 
-  const prevUserLocation = useRef<UserLocation | null>(userLocation);
+  // Always null on mount. This tracks whether a location has *arrived*, so it must not be
+  // seeded with the current value.
+  const prevUserLocation = useRef<UserLocation | null>(null);
 
   const {
     searchValue,
@@ -144,7 +147,7 @@ const Home: React.FC<HomeProps> = ({ data, canonical, jsonLd }) => {
       }}
     >
       <Seo
-        title={`${SITE_NAME} — Restaurants Reviewed by India's Best Food Vloggers`}
+        title={`${SITE_NAME}: Restaurants Reviewed by India's Best Food Vloggers`}
         description={SITE_DESCRIPTION}
         canonical={canonical}
       />
@@ -178,7 +181,7 @@ const Home: React.FC<HomeProps> = ({ data, canonical, jsonLd }) => {
           border: 0,
         }}
       >
-        {SITE_NAME} — restaurants reviewed by India&apos;s best food vloggers
+        {SITE_NAME}: restaurants reviewed by India&apos;s best food vloggers
       </Typography>
 
       {showLoadingOverlay && <LoadingScreen />}
@@ -197,8 +200,17 @@ const Home: React.FC<HomeProps> = ({ data, canonical, jsonLd }) => {
       {/* Mobile Controls */}
       <MobileControls />
 
-      <Snackbar open={!!geoError} autoHideDuration={6000} sx={{ mb: 8 }}>
-        <Alert severity="error" sx={{ width: "100%" }}>
+      {/* `onClose` is what actually dismisses this. `autoHideDuration` only schedules a
+          call to it, so without a handler the timer fired into nothing and a geolocation
+          error (most often a denied permission, after which no refresh ever runs to clear
+          it) stayed pinned over the feed for the rest of the session. */}
+      <Snackbar
+        open={!!geoError}
+        autoHideDuration={6000}
+        onClose={clearError}
+        sx={{ mb: 8 }}
+      >
+        <Alert severity="error" onClose={clearError} sx={{ width: "100%" }}>
           {geoError}
         </Alert>
       </Snackbar>
@@ -334,7 +346,7 @@ const Home: React.FC<HomeProps> = ({ data, canonical, jsonLd }) => {
  *
  * This payload is only the pre-hydration placeholder: any visitor who grants location,
  * searches, or filters immediately fetches live results from /api/search, so staleness is
- * visible only to someone who declines location and does nothing — and then only as the
+ * visible only to someone who declines location and does nothing, and then only as the
  * alphabetically-first ten places, which barely change.
  *
  * Because syncing runs locally against the production database, the deployment never learns

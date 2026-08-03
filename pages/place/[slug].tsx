@@ -380,8 +380,8 @@ export const getStaticPaths = async () => {
     /**
      * 'blocking' rather than true.
      *
-     * With `fallback: true` the first request for a not-yet-generated page — which for a
-     * newly synced restaurant is very often a crawler — receives a skeleton containing
+     * With `fallback: true` the first request for a not-yet-generated page (which for a
+     * newly synced restaurant is very often a crawler) receives a skeleton containing
      * "Loading delicious content..." and none of the actual content, with the real data
      * arriving only after client-side hydration. 'blocking' server-renders the complete
      * page before responding, so the first crawl sees the finished document and the

@@ -23,7 +23,7 @@ export const useGeolocation = () => {
   const [permissionState, setPermissionState] = useState<LocationPermission | null>(null);
   /**
    * True only while we know a position is on its way (permission already granted) but it
-   * has not arrived yet. Starts false so the server-rendered feed is what gets painted —
+   * has not arrived yet. Starts false so the server-rendered feed is what gets painted;
    * flipping it to true on the client is what suppresses the misleading default ordering.
    */
   const [locationPending, setLocationPending] = useState(false);
@@ -102,6 +102,16 @@ export const useGeolocation = () => {
       if (!silent) setLoading(false);
     }
   }, []);
+
+  /**
+   * Dismisses the current error.
+   *
+   * Needed because the only other thing that clears `error` is the start of a refresh, and
+   * a denied permission produces no location, so the auto-refresh interval never starts
+   * and nothing would ever clear it. The error banner stayed on screen for the rest of the
+   * session.
+   */
+  const clearError = useCallback(() => setError(null), []);
 
   const clearLocation = useCallback(() => {
     setUserLocation(null);
@@ -215,6 +225,7 @@ export const useGeolocation = () => {
     permissionState,
     locationPending,
     refreshLocation,
+    clearError,
     clearLocation,
   };
 };

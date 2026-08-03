@@ -7,9 +7,15 @@ export interface VideoInterface {
   channelTitle?: string;
   /**
    * YouTube publish timestamp. Required by schema.org `VideoObject` (`uploadDate`), which
-   * is why it is captured — it comes free in the snippet the sync already requests.
+   * is why it is captured. It comes free in the snippet the sync already requests.
    */
   publishedAt?: string | Date;
+  /**
+   * Set once the video's places have been fully resolved (including resolving to none).
+   * Absent means the last sync did not finish, and a soft sync should retry it rather than
+   * treat the video as done.
+   */
+  placesResolvedAt?: string | Date;
   thumbnail?: {
     small?: string;
     large?: string;
@@ -36,7 +42,7 @@ export interface PlaceInterface {
   rating?: number;
   /**
    * Number of Google reviews behind `rating`. Captured because schema.org `AggregateRating`
-   * is invalid without a count — the rating alone cannot be marked up.
+   * is invalid without a count. The rating alone cannot be marked up.
    */
   user_ratings_total?: number;
   url?: string; // Google Maps URL
