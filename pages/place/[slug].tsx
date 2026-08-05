@@ -4,25 +4,14 @@ import {
   Grid,
   Box,
   Container,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
   Breadcrumbs,
-  Chip,
   Link as MuiLink,
   Paper,
   Divider,
+  Stack,
 } from "@mui/material";
-import {
-  ExpandMore as ExpandMoreIcon,
-  ArrowBack as ArrowBackIcon,
-  AccessTime as AccessTimeIcon,
-  VideoLibrary as VideoLibraryIcon,
-  Description as DescriptionIcon,
-} from "@mui/icons-material";
+import { ArrowBack as ArrowBackIcon } from "@mui/icons-material";
 import NextLink from "next/link";
-import dynamic from "next/dynamic";
-import { DiscussionEmbed } from "disqus-react";
 import { GetStaticPropsContext } from "next";
 
 import ResponsiveDrawer from "../../components/headers/Header";
@@ -35,9 +24,17 @@ import {
   NearbyPlace,
 } from "../../services/placeService";
 import { RestaurantInfo } from "../../components/ui/RestaurantInfo";
-import { stripPlusCode } from "../../utils/formatAddress";
+import { PlaceGallery } from "../../components/ui/PlaceGallery";
+import { PlaceMetaRow, BusinessStatusNotice } from "../../components/ui/PlaceMeta";
+import { OpeningHours } from "../../components/ui/OpeningHours";
+import { VideoSection } from "../../components/ui/VideoSection";
+import { NearbyPlaces } from "../../components/ui/NearbyPlaces";
+import { CommentsSection } from "../../components/ui/CommentsSection";
+import { ShareButton } from "../../components/ui/ShareButton";
+import { Footer } from "../../components/ui/Footer";
 import { Seo } from "../../components/seo/Seo";
 import { JsonLd } from "../../components/seo/JsonLd";
+import { collectPlaceImages, PlaceImage } from "../../utils/images";
 import { NEARBY_PLACES_COUNT, SITE_NAME } from "../../config/constants";
 import {
   absoluteUrl,
@@ -49,17 +46,6 @@ import {
   JsonLd as JsonLdType,
 } from "../../lib/seo";
 
-/**
- * Client-only, because react-player suspends internally while it resolves the player for a
- * given URL. Rendered on the server that resolves to nothing, so the markup React found on
- * hydration never matched what it expected and the whole tree below was thrown away and
- * re-rendered ("Hydration failed because the server rendered HTML didn't match the client").
- *
- * Nothing is lost by skipping it server-side: an iframe embed carries no text for a crawler,
- * and the video's actual search signal is the `VideoObject` JSON-LD this page already emits.
- */
-const ReactPlayer = dynamic(() => import("react-player"), { ssr: false });
-
 /** How long a prerendered place page may serve stale before ISR regenerates it. */
 const PLACE_REVALIDATE_SECONDS = 3600;
 
@@ -68,6 +54,7 @@ interface PlacePageProps {
   place: PlaceInterface;
   videos: VideoInterface[];
   nearby: NearbyPlace[];
+  images: PlaceImage[];
   canonical: string;
   title: string;
   description: string;
@@ -79,6 +66,7 @@ const PlacePage: React.FC<PlacePageProps> = ({
   place,
   videos,
   nearby,
+  images,
   canonical,
   title,
   description,
@@ -99,8 +87,14 @@ const PlacePage: React.FC<PlacePageProps> = ({
         <JsonLd key={index} data={data} />
       ))}
       <ResponsiveDrawer />
-      
-      <Container maxWidth="md" sx={{ mt: { xs: 2, sm: 4 }, mb: 4, px: { xs: 2, sm: 2 } }}>
+
+      {/* The page's main landmark. Without one there is nothing for a screen reader's
+          "jump to main content" to land on, and every page here was header-then-soup. */}
+      <Container
+        component="main"
+        maxWidth="md"
+        sx={{ mt: { xs: 2, sm: 4 }, mb: 4, px: { xs: 2, sm: 2 } }}
+      >
         {/* A real breadcrumb rather than a "back" button: it emits crawlable anchors and
             mirrors the BreadcrumbList JSON-LD, which search engines require to match the
             visible page before they will render a breadcrumb trail in results. */}
@@ -123,34 +117,74 @@ const PlacePage: React.FC<PlacePageProps> = ({
           </Typography>
         </Breadcrumbs>
 
-        <Paper 
-          elevation={0} 
-          sx={{ 
-            p: { xs: 2, sm: 4 }, 
-            borderRadius: "24px", 
-            border: "1px solid", 
-            borderColor: "divider", 
+        <Paper
+          elevation={0}
+          sx={{
+            p: { xs: 2, sm: 4 },
+            borderRadius: "24px",
+            border: "1px solid",
+            borderColor: "divider",
             bgcolor: "background.paper",
-            overflow: "hidden"
+            overflow: "hidden",
           }}
         >
           <Grid container spacing={{ xs: 3, sm: 4 }}>
+            {images.length > 0 && (
+              <Grid item xs={12}>
+                <PlaceGallery
+                  images={images}
+                  name={place.name}
+                  photoAttribution={place.photoAttribution}
+                />
+              </Grid>
+            )}
+
             <Grid item xs={12}>
-              <Box sx={{ textAlign: "left", mb: 1 }}>
-                <Typography 
-                  variant="h3" 
-                  component="h1" 
-                  fontWeight="800" 
-                  color="text.primary"
-                  sx={{ 
-                    fontSize: { xs: "2rem", sm: "2.5rem" },
-                    lineHeight: 1.1,
-                    letterSpacing: -1
-                  }}
-                >
-                  {place.name}
-                </Typography>
-              </Box>
+              <Stack
+                direction="row"
+                spacing={2}
+                alignItems="flex-start"
+                justifyContent="space-between"
+              >
+                <Box sx={{ textAlign: "left", minWidth: 0 }}>
+                  <Typography
+                    variant="h3"
+                    component="h1"
+                    fontWeight="800"
+                    color="text.primary"
+                    sx={{
+                      fontSize: { xs: "2rem", sm: "2.5rem" },
+                      lineHeight: 1.1,
+                      letterSpacing: -1,
+                    }}
+                  >
+                    {place.name}
+                  </Typography>
+                  {/* Rating with its review count, live open/closed state, and diet. All
+                      three were either buried or absent; they are what someone deciding
+                      whether to go actually reads. */}
+                  <PlaceMetaRow
+                    rating={place.rating}
+                    ratingsTotal={place.user_ratings_total}
+                    weekdayText={place.opening_hours?.weekday_text}
+                    hasVeg={place.hasVeg}
+                  />
+                </Box>
+                <Box sx={{ pt: 0.5 }}>
+                  <ShareButton
+                    title={place.name}
+                    text={`${place.name} on ${SITE_NAME}`}
+                    url={canonical}
+                  />
+                </Box>
+              </Stack>
+
+              {place.business_status && place.business_status !== "OPERATIONAL" && (
+                <Box sx={{ mt: 2 }}>
+                  <BusinessStatusNotice status={place.business_status} />
+                </Box>
+              )}
+
               <Divider sx={{ mt: 3, mb: 1, borderStyle: "dashed" }} />
             </Grid>
 
@@ -160,227 +194,29 @@ const PlacePage: React.FC<PlacePageProps> = ({
 
             <Grid item xs={12}>
               <Box sx={{ mt: 1 }}>
-                <Accordion 
-                  elevation={0} 
-                  sx={{ 
-                    border: "1px solid", 
-                    borderColor: "divider", 
-                    borderRadius: "16px !important", 
-                    mb: 4, 
-                    bgcolor: "action.hover",
-                    overflow: "hidden"
-                  }}
-                >
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Box display="flex" alignItems="center" gap={1.5}>
-                      <AccessTimeIcon sx={{ color: "primary.main" }} />
-                      <Typography fontWeight="bold">Operating Hours</Typography>
-                    </Box>
-                  </AccordionSummary>
-                  <AccordionDetails sx={{ bgcolor: "background.paper", borderTop: "1px solid", borderColor: "divider" }}>
-                    {place.opening_hours?.weekday_text && place.opening_hours.weekday_text.length > 0 ? (
-                      <Grid container spacing={1.5} sx={{ py: 1 }}>
-                        {place.opening_hours.weekday_text.map((text, index) => (
-                          <Grid item xs={12} key={index}>
-                            <Typography variant="body2" sx={{ fontWeight: 500, display: "flex", justifyContent: "space-between" }}>
-                              {text}
-                            </Typography>
-                          </Grid>
-                        ))}
-                      </Grid>
-                    ) : (
-                      <Typography variant="body2" color="text.secondary">No hours listed</Typography>
-                    )}
-                  </AccordionDetails>
-                </Accordion>
-
-                <Box sx={{ mb: 4 }}>
-                  <Typography variant="h6" component="h2" fontWeight="800" gutterBottom sx={{ mt: 6, mb: 3, display: "flex", alignItems: "center", gap: 1.5, letterSpacing: -0.5, fontSize: { xs: "1.25rem", sm: "1.5rem" } }}>
-                    <VideoLibraryIcon sx={{ color: "error.main", fontSize: "1.6rem" }} />
-                    Featured in Videos
-                  </Typography>
-                  
-                  {videos.map((video) => (
-                    <Box key={video.videoId} sx={{ mb: 6 }}>
-                      <Box
-                        sx={{
-                          position: "relative",
-                          paddingTop: "56.25%",
-                          width: "100%",
-                          borderRadius: "20px",
-                          overflow: "hidden",
-                          boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
-                          bgcolor: "black",
-                          mb: 2.5,
-                          border: "1px solid",
-                          borderColor: "divider"
-                        }}
-                      >
-                        <ReactPlayer
-                          url={`https://www.youtube.com/watch?v=${video.videoId}`}
-                          width="100%"
-                          height="100%"
-                          style={{ position: "absolute", top: 0, left: 0 }}
-                          controls
-                        />
-                      </Box>
-
-                      {video.videoDescription && (
-                        <Accordion 
-                          elevation={0} 
-                          sx={{ 
-                            border: "1px solid", 
-                            borderColor: "divider", 
-                            borderRadius: "16px !important", 
-                            bgcolor: "action.hover",
-                            "&:before": { display: "none" }
-                          }}
-                        >
-                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                            <Box display="flex" alignItems="center" gap={1.5}>
-                              <DescriptionIcon color="action" sx={{ fontSize: "1.2rem" }} />
-                              <Typography variant="body2" fontWeight="bold">Video Description</Typography>
-                            </Box>
-                          </AccordionSummary>
-                          <AccordionDetails sx={{ bgcolor: "background.paper", borderTop: "1px solid", borderColor: "divider" }}>
-                            <Typography 
-                              variant="body2" 
-                              color="text.secondary" 
-                              sx={{ 
-                                whiteSpace: "pre-wrap", 
-                                fontSize: "0.9rem",
-                                lineHeight: 1.7
-                              }}
-                            >
-                              {video.videoDescription}
-                            </Typography>
-                          </AccordionDetails>
-                        </Accordion>
-                      )}
-                    </Box>
-                  ))}
-                </Box>
+                <OpeningHours weekdayText={place.opening_hours?.weekday_text} />
+                <VideoSection videos={videos} />
               </Box>
             </Grid>
 
             {nearby.length > 0 && (
               <Grid item xs={12}>
-                <Box component="section" sx={{ mt: { xs: 1, sm: 2 } }}>
-                  <Typography
-                    variant="h5"
-                    component="h2"
-                    fontWeight="800"
-                    gutterBottom
-                    sx={{ mb: 3, letterSpacing: -0.5 }}
-                  >
-                    Restaurants nearby
-                  </Typography>
-                  <Grid container spacing={2}>
-                    {nearby.map((item) => (
-                      <Grid item xs={12} sm={6} key={item.slug}>
-                        <Paper
-                          component={NextLink}
-                          href={`/place/${item.slug}`}
-                          elevation={0}
-                          sx={{
-                            display: "block",
-                            p: 2,
-                            height: "100%",
-                            borderRadius: "16px",
-                            border: "1px solid",
-                            borderColor: "divider",
-                            bgcolor: "action.hover",
-                            textDecoration: "none",
-                            color: "inherit",
-                            transition: "all 0.2s",
-                            "&:hover": {
-                              bgcolor: "action.selected",
-                              transform: "translateY(-2px)",
-                              boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
-                            },
-                          }}
-                        >
-                          <Typography
-                            variant="subtitle1"
-                            component="h3"
-                            sx={{ fontWeight: 700, lineHeight: 1.3, mb: 0.5 }}
-                          >
-                            {item.name}
-                          </Typography>
-                          {item.formatted_address && (
-                            <Typography
-                              variant="body2"
-                              color="text.secondary"
-                              sx={{
-                                display: "-webkit-box",
-                                WebkitLineClamp: 2,
-                                WebkitBoxOrient: "vertical",
-                                overflow: "hidden",
-                                mb: 1,
-                              }}
-                            >
-                              {stripPlusCode(item.formatted_address)}
-                            </Typography>
-                          )}
-                          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                            <Chip
-                              size="small"
-                              label={`${item.distanceKm} km away`}
-                              sx={{ fontWeight: 600 }}
-                            />
-                            {typeof item.rating === "number" && (
-                              <Chip size="small" variant="outlined" label={`★ ${item.rating}`} />
-                            )}
-                            {item.hasVeg && (
-                              <Chip
-                                size="small"
-                                color="success"
-                                variant="outlined"
-                                label="Veg friendly"
-                              />
-                            )}
-                          </Box>
-                        </Paper>
-                      </Grid>
-                    ))}
-                  </Grid>
-                </Box>
+                <NearbyPlaces places={nearby} />
               </Grid>
             )}
 
             <Grid item xs={12}>
-              <Box sx={{ mt: { xs: 2, sm: 4 } }}>
-                <Typography variant="h5" component="h2" fontWeight="800" gutterBottom sx={{ mb: 3, letterSpacing: -0.5 }}>
-                  Comments & Discussion
-                </Typography>
-                <Paper 
-                  elevation={0} 
-                  sx={{ 
-                    p: { xs: 2, sm: 3 }, 
-                    borderRadius: "20px", 
-                    border: "1px solid", 
-                    borderColor: "divider", 
-                    bgcolor: "background.paper",
-                    boxShadow: "0 4px 20px rgba(0,0,0,0.05)"
-                  }}
-                >
-                  <DiscussionEmbed
-                    shortname={process.env.NEXT_PUBLIC_DISQUS_SHORTNAME || "disqus-shortname"}
-                    config={{
-                      // The canonical URL, not `router.asPath`: the latter carries any
-                      // query string, so arriving with a `?utm_source=…` tag would open a
-                      // separate Disqus thread for the same restaurant.
-                      url: canonical,
-                      identifier: place.place_id,
-                      title: place.name,
-                    }}
-                  />
-                </Paper>
-              </Box>
+              <CommentsSection
+                url={canonical}
+                identifier={place.place_id}
+                title={place.name}
+              />
             </Grid>
           </Grid>
         </Paper>
       </Container>
+
+      <Footer />
     </Box>
   );
 };
@@ -421,15 +257,14 @@ export const getStaticProps = async (context: GetStaticPropsContext) => {
   const siteUrl = getSiteUrl();
   const canonical = absoluteUrl(siteUrl, `/place/${place.slug}`);
 
+  // The gallery's images, resolved here rather than in the component so the same list backs
+  // the social preview below and the page itself cannot disagree with the card that led
+  // here about which photograph belongs to this place.
+  const images = collectPlaceImages(place);
+
   // Prefer the stored place photo for social previews, falling back to a video thumbnail.
   // `allThumbnails` is already ordered place-photo-first by the sync.
-  const socialImage =
-    place.photoUrl ||
-    place.allThumbnails?.find((thumb) => thumb.large || thumb.small)?.large ||
-    place.allThumbnails?.find((thumb) => thumb.large || thumb.small)?.small ||
-    place.thumbnail?.large ||
-    place.thumbnail?.small ||
-    null;
+  const socialImage = place.photoUrl || images[0]?.url || null;
 
   const imageUrls = [socialImage].filter((url): url is string => Boolean(url));
 
@@ -447,6 +282,7 @@ export const getStaticProps = async (context: GetStaticPropsContext) => {
       place,
       videos,
       nearby,
+      images,
       canonical,
       title: buildPlaceTitle(place.name),
       description: buildPlaceDescription(place, videos.length),

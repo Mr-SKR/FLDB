@@ -16,8 +16,9 @@ This repository contains the integrated frontend and synchronization logic.
 
 - 📍 **Location-Based Discovery:** Find restaurants near your current location across multiple creators.
 - 🔍 **Powerful Search:** Search by restaurant name, location, or video title.
+- 🎚️ **Sorting & Filters:** Order by nearest, top rated or A-to-Z, and narrow by minimum rating or "Veg Friendly". Every panel reports how many places actually match.
+- 🕒 **Open Right Now:** Opening hours are parsed into a schedule, so each place says whether it is open and when it closes.
 - 🌓 **Dark & Light Mode:** Fully responsive UI with persistent theme support.
-- 🥗 **Dietary Filters:** Quickly filter for "Veg Friendly" restaurants.
 - 🔄 **Automated Data Sync:** Integrated background synchronization with YouTube and Google Places APIs for multiple channels.
 - 💬 **Discussion Integration:** Comment and discuss reviews via Disqus.
 

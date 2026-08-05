@@ -3,7 +3,12 @@ import dbConnect from "../../lib/dbConnect";
 import Place from "../../models/Place";
 import { serializeDocuments } from "../../utils/serialize";
 import { logger } from "../../lib/logger";
-import { PAGE_SIZE } from "../../config/constants";
+import {
+  DEFAULT_SORT_MODE,
+  isSortMode,
+  PAGE_SIZE,
+  SortMode,
+} from "../../config/constants";
 import { LIST_PROJECTION } from "../../services/placeService";
 import { rateLimit, getClientKey } from "../../lib/rateLimit";
 
@@ -23,6 +28,43 @@ const SEARCH_WINDOW_MS = 60_000;
 /** Highest page a caller may request. See the bounding comment in the handler. */
 const MAX_PAGE = 1000;
 
+/**
+ * Reads the requested ordering, defaulting anything unrecognised.
+ *
+ * `nearest` needs coordinates and silently degrades to `name` without them, which is what
+ * the control in the UI says it does. Every ordering carries `_id` as a final tiebreaker:
+ * none of these keys is unique, each page is a separate query, and without a deterministic
+ * tie-break MongoDB may order equal values differently between page 1 and page 2, which
+ * surfaces as a place appearing twice in the feed or being skipped entirely.
+ */
+const parseSort = (value: unknown): SortMode =>
+  isSortMode(value) ? value : DEFAULT_SORT_MODE;
+
+/**
+ * Reads the number out of a `$count` result.
+ *
+ * The stage emits `[{ total: n }]`, and nothing at all when the pipeline matched nothing,
+ * so an empty array means zero rather than unknown. `null` is reserved for "not asked for",
+ * which the client uses to keep the total it already had rather than blanking the label
+ * while paging.
+ */
+const countOf = (result: { total?: number }[] | null): number | null => {
+  if (result === null) return null;
+  return result[0]?.total ?? 0;
+};
+
+/**
+ * Minimum rating, clamped to the range Google itself uses.
+ *
+ * Anything outside 0-5 is treated as no filter rather than rejected: this is a browsing
+ * control, and an odd query string should show everything rather than an error.
+ */
+const parseMinRating = (value: unknown): number => {
+  const parsed = typeof value === "string" ? parseFloat(value) : NaN;
+  if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 5) return 0;
+  return parsed;
+};
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -39,9 +81,11 @@ export default async function handler(
     return res.status(429).json({ message: "Too many requests" });
   }
 
-  const { q, veg, page, limit, lat, lng } = req.query;
+  const { q, veg, page, limit, lat, lng, sort, minRating } = req.query;
   const isVegOnly = veg === "true";
-  
+  const sortMode = parseSort(sort);
+  const minRatingValue = parseMinRating(minRating);
+
   let pageNum = parseInt(page as string) || 1;
   let limitNum = parseInt(limit as string) || PAGE_SIZE;
 
@@ -67,7 +111,42 @@ export default async function handler(
 
   const skip = (pageNum - 1) * limitNum;
 
-  logger.debug("Search query received", "searchAPI", { q, veg, page, limit, lat, lng });
+  logger.debug("Search query received", "searchAPI", {
+    q,
+    veg,
+    page,
+    limit,
+    lat,
+    lng,
+    sort: sortMode,
+    minRating: minRatingValue,
+  });
+
+  /** Post-`$search` and plain-find filters that are not the text query itself. */
+  const attributeFilter: Record<string, unknown> = {};
+  if (isVegOnly) attributeFilter.hasVeg = true;
+  if (minRatingValue > 0) attributeFilter.rating = { $gte: minRatingValue };
+  const hasAttributeFilter = Object.keys(attributeFilter).length > 0;
+
+  /** Sort stage for everything except relevance ordering and distance ordering. */
+  const sortStage: Record<string, 1 | -1> | null =
+    sortMode === "rating"
+      ? // Ties on the score are broken by how many people gave it: 4.5 from 900 people is a
+        // stronger result than 4.5 from three, and showing the latter first reads as noise.
+        { rating: -1, user_ratings_total: -1, _id: 1 }
+      : sortMode === "name"
+        ? { name: 1, _id: 1 }
+        : null;
+
+  /**
+   * How many places match, as opposed to how many are on this page.
+   *
+   * Only counted for page 1. Every filter change refetches page 1, so that is exactly when
+   * the number can have moved; paging appends to a result set whose size is already known,
+   * and re-counting on every scroll would double the query load on the one endpoint an
+   * anonymous caller can drive for nothing gained.
+   */
+  const wantsTotal = pageNum === 1;
 
   try {
     await dbConnect();
@@ -97,32 +176,54 @@ export default async function handler(
        *
        * The no-query branch below was never affected: it filters with a plain `$match`.
        */
-      const results = await Place.aggregate([
-        {
-          $search: {
-            index: "default",
-            compound: { must },
-          },
+      const searchStage = {
+        $search: {
+          index: "default",
+          compound: { must },
         },
-        ...(isVegOnly ? [{ $match: { hasVeg: true } }] : []),
-        { $skip: skip },
-        { $limit: limitNum },
-        {
-          $project: {
-            ...LIST_PROJECTION,
-            score: { $meta: "searchScore" },
+      };
+      const filterStages = hasAttributeFilter ? [{ $match: attributeFilter }] : [];
+
+      const [results, total] = await Promise.all([
+        Place.aggregate([
+          searchStage,
+          ...filterStages,
+          // Projected before any re-sort, for the same memory reason spelled out in the
+          // distance branch below: `$sort` is blocking, and sorting whole documents drags
+          // `searchContent` and any un-migrated `placePhotoBase64` through it.
+          {
+            $project: {
+              ...LIST_PROJECTION,
+              score: { $meta: "searchScore" },
+            },
           },
-        },
+          // No stage at all for the default ordering: `$search` already emits documents in
+          // relevance order, which is the right answer to a text query and the one a sort
+          // would throw away.
+          ...(sortStage ? [{ $sort: sortStage }] : []),
+          { $skip: skip },
+          { $limit: limitNum },
+        ]),
+        // Counted through the same `$search` and `$match`, so it answers "how many match
+        // this query" rather than "how many exist". No projection or sort: `$count`
+        // consumes only the document stream's length.
+        wantsTotal
+          ? Place.aggregate([searchStage, ...filterStages, { $count: "total" }])
+          : Promise.resolve(null),
       ]);
 
-      return res.status(200).json(serializeDocuments(results));
+      return res.status(200).json({
+        data: serializeDocuments(results),
+        total: countOf(total),
+      });
     } else {
-      // General listing with optional veg filter
-      const filter: Record<string, unknown> = {};
-      if (isVegOnly) filter.hasVeg = true;
+      // General listing with the attribute filters applied directly.
+      const filter = attributeFilter;
 
       let results;
-      if (hasCoords) {
+      // `nearest` is the only ordering that needs the geo pipeline. Asking for top-rated or
+      // A-to-Z while located should honour that request, not quietly re-sort by distance.
+      if (hasCoords && sortMode === DEFAULT_SORT_MODE) {
         // Approximate planar distance, good enough for ranking nearby results.
         //
         // A degree of longitude is shorter than a degree of latitude by cos(latitude), so
@@ -181,15 +282,20 @@ export default async function handler(
         ]);
       } else {
         // `_id` breaks ties here too: restaurant names are not unique (chains), so paging
-        // an ambiguous `name` ordering can repeat or drop rows.
+        // an ambiguous `name` ordering can repeat or drop rows. `nearest` lands here when
+        // the caller sent no coordinates, and A-to-Z is the honest fallback for it.
         results = await Place.find(filter, LIST_PROJECTION)
-          .sort({ name: 1, _id: 1 })
+          .sort(sortStage ?? { name: 1, _id: 1 })
           .skip(skip)
           .limit(limitNum)
           .lean();
       }
 
-      return res.status(200).json(serializeDocuments(results));
+      // A plain `countDocuments` on the same filter. Both branches above narrow with
+      // exactly this filter and differ only in ordering, so one count answers for both.
+      const total = wantsTotal ? await Place.countDocuments(filter) : null;
+
+      return res.status(200).json({ data: serializeDocuments(results), total });
     }
   } catch (error) {
     // Log the detail; never return driver/internal messages to the caller.

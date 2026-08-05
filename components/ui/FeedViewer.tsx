@@ -147,6 +147,8 @@ export const FeedViewer: React.FC<FeedViewerProps> = ({
             onRequestLocation={requestLocation}
             index={index}
             rating={place.rating}
+            ratingsTotal={place.user_ratings_total}
+            businessStatus={place.business_status}
             url={place.url}
             photoAttribution={place.photoAttribution}
           />
@@ -171,13 +173,26 @@ export const FeedViewer: React.FC<FeedViewerProps> = ({
           p: 4,
           textAlign: "center"
         }}>
-          <Box sx={{ mb: 4, opacity: 0.9 }}>
-             <Image 
-               src="/img/walking-chef.gif" 
-               alt="Walking Chef" 
+          {/* The GIF carries a solid light background, so on the dark scheme it lands as a
+              bare white rectangle. Rounding and insetting it makes that read as a tile
+              rather than a transparency bug, matching the error pages. Decorative, so the
+              alt text is empty: the heading below already says what this is. */}
+          <Box
+            sx={{
+              mb: 4,
+              p: 1,
+              borderRadius: "20px",
+              overflow: "hidden",
+              bgcolor: "common.white",
+              lineHeight: 0,
+            }}
+          >
+             <Image
+               src="/img/walking-chef.gif"
+               alt=""
                width={120}
                height={120}
-               style={{ borderRadius: "12px", objectFit: "contain" }} 
+               style={{ borderRadius: "12px", objectFit: "contain" }}
                unoptimized
              />
           </Box>

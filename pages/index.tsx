@@ -11,7 +11,6 @@ import {
   AlertProps,
 } from "@mui/material";
 import { Tune as TuneIcon, Close as CloseIcon } from "@mui/icons-material";
-import Head from "next/head";
 import { logger } from "../lib/logger";
 import { Seo } from "../components/seo/Seo";
 import { JsonLd } from "../components/seo/JsonLd";
@@ -29,9 +28,10 @@ import { usePlaceFilters } from "../hooks/usePlaceFilters";
 import { getPlacesPaginated } from "../services/placeService";
 import { FeedViewer } from "../components/ui/FeedViewer";
 import { FilterSection } from "../components/ui/FilterSection";
+import { FilterBar } from "../components/ui/FilterBar";
+import { FeedNotice } from "../components/ui/FeedNotice";
 import { PlaceInterface } from "../types/types";
 import ResponsiveDrawer from "../components/headers/Header";
-import { LoadingScreen } from "../components/ui/LoadingScreen";
 import { LocationPrompt } from "../components/ui/LocationPrompt";
 import { MobileControls } from "../components/ui/MobileControls";
 import { PAGE_SIZE } from "../config/constants";
@@ -42,11 +42,13 @@ const Alert = forwardRef<HTMLDivElement, AlertProps>(function Alert(props, ref) 
 
 interface HomeProps {
   data: PlaceInterface[];
+  /** Size of the unfiltered catalogue, counted at build time. */
+  total: number;
   canonical: string;
   jsonLd: JsonLdType[];
 }
 
-const Home: React.FC<HomeProps> = ({ data, canonical, jsonLd }) => {
+const Home: React.FC<HomeProps> = ({ data, total, canonical, jsonLd }) => {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isLocationPromptOpen, setIsLocationPromptOpen] = useState(false);
   const observerTarget = useRef<HTMLDivElement>(null);
@@ -71,6 +73,11 @@ const Home: React.FC<HomeProps> = ({ data, canonical, jsonLd }) => {
     setSearchValue,
     hasVeg,
     setHasVeg,
+    sortBy,
+    setSortBy,
+    minRating,
+    setMinRating,
+    totalCount,
     filteredPlaces,
     isSearching,
     isLoadingMore,
@@ -81,7 +88,7 @@ const Home: React.FC<HomeProps> = ({ data, canonical, jsonLd }) => {
     restoredFeed,
     feedError,
     retryFetch,
-  } = usePlaceFilters(data, userLocation, feedContainerRef);
+  } = usePlaceFilters(data, userLocation, feedContainerRef, total);
 
   // Auto-scroll to top when location is granted to show the newly sorted first item.
   //
@@ -141,10 +148,21 @@ const Home: React.FC<HomeProps> = ({ data, canonical, jsonLd }) => {
     return () => observer.disconnect();
   }, [handleObserver]);
 
-  // Rendered as a fixed-position overlay rather than replacing the feed, so the
-  // server-rendered content stays in the HTML for crawlers while we suppress the
-  // default (non-local) ordering from being shown to the user as if it were final.
-  const showLoadingOverlay = isInitialLoading || locationPending;
+  /*
+    What is happening to the feed, said in a pill rather than behind a curtain.
+
+    This used to be a full-screen splash. Suppressing the default ordering while a position
+    is inbound is a reasonable goal, but the cost was disproportionate: with permission
+    already granted, acquisition runs an 8s attempt and then a 10s fallback, so a weak GPS
+    fix meant up to eighteen seconds of an opaque, unskippable logo screen sitting on top of
+    a feed that had already rendered. Naming the wait and leaving the content readable is
+    both faster to first use and more honest about what the ordering currently is.
+  */
+  const notice = locationPending
+    ? "Finding places near you…"
+    : isInitialLoading
+      ? "Loading places…"
+      : null;
 
   return (
     <Box
@@ -174,25 +192,6 @@ const Home: React.FC<HomeProps> = ({ data, canonical, jsonLd }) => {
       {jsonLd.map((data, index) => (
         <JsonLd key={index} data={data} />
       ))}
-      <Head>
-        {/* The canonical viewport tag lives in _app.tsx. It deliberately does not set
-            maximum-scale/user-scalable=0, which would disable pinch-zoom (WCAG 1.4.4). */}
-        {/* Browser chrome follows the scheme too. A single hard-coded black left the
-            address bar dark against a light page. These track the OS preference rather
-            than the in-app toggle, which is as far as the tag goes. */}
-        <meta
-          name="theme-color"
-          media="(prefers-color-scheme: light)"
-          content="#f9f9fb"
-          key="theme-color-light"
-        />
-        <meta
-          name="theme-color"
-          media="(prefers-color-scheme: dark)"
-          content="#121212"
-          key="theme-color-dark"
-        />
-      </Head>
 
       {/*
         The page's single h1. It is visually hidden because the design is a full-bleed
@@ -217,8 +216,6 @@ const Home: React.FC<HomeProps> = ({ data, canonical, jsonLd }) => {
       >
         {SITE_NAME}: restaurants reviewed by India&apos;s best food vloggers
       </Typography>
-
-      {showLoadingOverlay && <LoadingScreen />}
 
       <LocationPrompt
         open={isLocationPromptOpen}
@@ -250,8 +247,9 @@ const Home: React.FC<HomeProps> = ({ data, canonical, jsonLd }) => {
       </Snackbar>
 
       {/* Main Container */}
-      <Box 
-        sx={{ 
+      <Box
+        component="main"
+        sx={{
           flexGrow: 1,
           display: "flex",
           justifyContent: "center",
@@ -275,6 +273,26 @@ const Home: React.FC<HomeProps> = ({ data, canonical, jsonLd }) => {
             flexDirection: "column",
           }}
         >
+          {/* Desktop search and filters, above the grid they act on. The phone keeps the
+              bottom sheet below, which suits a one-handed, full-bleed layout. */}
+          <FilterBar
+            searchValue={searchValue}
+            setSearchValue={setSearchValue}
+            hasVeg={hasVeg}
+            setHasVeg={setHasVeg}
+            sortBy={sortBy}
+            setSortBy={setSortBy}
+            minRating={minRating}
+            setMinRating={setMinRating}
+            userLocation={userLocation}
+            requestLocation={requestLocation}
+            clearLocation={clearLocation}
+            totalCount={totalCount}
+            isSearching={isSearching}
+          />
+
+          {notice && <FeedNotice label={notice} />}
+
           {/* Feed Content */}
           <FeedViewer
             containerRef={feedContainerRef}
@@ -289,14 +307,17 @@ const Home: React.FC<HomeProps> = ({ data, canonical, jsonLd }) => {
             onRetry={retryFetch}
           />
 
-          {/* Filter FAB - Now anchored to the feed wrapper */}
+          {/* Filter FAB. Phone and tablet only: from `md` up the same controls are in the
+              bar above, and a floating button over them would be a second way to do one
+              thing. */}
           {!isFilterOpen && (
             <Fab
               size="medium"
               color="primary"
-              aria-label="filter"
+              aria-label="Search and filter"
               onClick={() => setIsFilterOpen(true)}
               sx={{
+                display: { xs: "flex", md: "none" },
                 position: "absolute",
                 bottom: { xs: 32, sm: 40 },
                 right: 24,
@@ -313,10 +334,10 @@ const Home: React.FC<HomeProps> = ({ data, canonical, jsonLd }) => {
 
         {/* Global Loading Overlay */}
         {isSearching && (
-          <Box sx={{ 
-            position: "absolute", 
-            top: "50%", 
-            left: "50%", 
+          <Box sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
             transform: "translate(-50%, -50%)",
             zIndex: 20,
             bgcolor: "rgba(0,0,0,0.5)",
@@ -343,7 +364,7 @@ const Home: React.FC<HomeProps> = ({ data, canonical, jsonLd }) => {
             // Capped so a card stays visible above the sheet. This panel filters the feed
             // behind it, and at 85vh it covered essentially all of the thing it was
             // changing, leaving the user no way to see the effect of what they typed.
-            maxHeight: "72vh",
+            maxHeight: "80vh",
             overflowY: "auto",
             bgcolor: "background.paper",
             width: "100%",
@@ -354,19 +375,19 @@ const Home: React.FC<HomeProps> = ({ data, canonical, jsonLd }) => {
       >
         <Box sx={{ px: 3, pt: 2, pb: 4 }}>
           {/* Drag handle */}
-          <Box sx={{ 
-            width: 40, 
-            height: 4, 
-            bgcolor: "action.disabled", 
-            borderRadius: 2, 
-            mx: "auto", 
+          <Box sx={{
+            width: 40,
+            height: 4,
+            bgcolor: "action.disabled",
+            borderRadius: 2,
+            mx: "auto",
             mb: 2,
             opacity: 0.5
           }} />
-          
+
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
             <Typography variant="h6" component="h2" sx={{ fontWeight: "bold" }}>Explore & Filter</Typography>
-            <IconButton onClick={() => setIsFilterOpen(false)} size="small" sx={{ bgcolor: "action.hover" }}>
+            <IconButton onClick={() => setIsFilterOpen(false)} size="small" sx={{ bgcolor: "action.hover" }} aria-label="Close filters">
               <CloseIcon />
             </IconButton>
           </Box>
@@ -378,8 +399,11 @@ const Home: React.FC<HomeProps> = ({ data, canonical, jsonLd }) => {
             clearLocation={clearLocation}
             hasVeg={hasVeg}
             setHasVeg={setHasVeg}
-            resultCount={filteredPlaces.length}
-            hasMore={hasMore}
+            sortBy={sortBy}
+            setSortBy={setSortBy}
+            minRating={minRating}
+            setMinRating={setMinRating}
+            totalCount={totalCount}
             isSearching={isSearching}
           />
         </Box>
@@ -410,12 +434,15 @@ export const getStaticProps = async () => {
   try {
     // Must match PAGE_SIZE: the client infers `hasMore` from whether a response came back
     // full, so a server-rendered first page of a different size would break paging.
-    const { data } = await getPlacesPaginated(1, PAGE_SIZE);
+    // `total` was already being counted here and discarded. It is the size of the
+    // unfiltered catalogue, which is what the filter panels state until a filter narrows it.
+    const { data, total } = await getPlacesPaginated(1, PAGE_SIZE);
     const places = data || [];
 
     return {
       props: {
         data: places,
+        total,
         canonical,
         jsonLd: [
           buildWebSiteJsonLd(siteUrl),
@@ -430,7 +457,7 @@ export const getStaticProps = async () => {
   } catch (error) {
     logger.error("Error in getStaticProps", "Home", error);
     return {
-      props: { data: [], canonical, jsonLd: [buildWebSiteJsonLd(siteUrl)] },
+      props: { data: [], total: 0, canonical, jsonLd: [buildWebSiteJsonLd(siteUrl)] },
       // Retry sooner after a failure so a transient database error does not pin an empty
       // page in the cache for a full hour.
       revalidate: 60,

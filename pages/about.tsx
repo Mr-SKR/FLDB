@@ -5,6 +5,7 @@ import { useRouter } from "next/router";
 
 import ResponsiveDrawer from "../components/headers/Header";
 import CustomAccordion from "../components/accordion/Accordion";
+import { Footer } from "../components/ui/Footer";
 import { Seo } from "../components/seo/Seo";
 import { JsonLd } from "../components/seo/JsonLd";
 import {
@@ -135,8 +136,10 @@ function About({ canonical, jsonLd }: AboutProps): React.ReactElement {
       {/* The page is a genuine question-and-answer document, which is exactly what FAQPage
           markup describes, and it is the one page here eligible for FAQ rich results. */}
       <JsonLd data={jsonLd} />
-      <ResponsiveDrawer showAbout={false} showThemeToggle={false} />
-      <Container maxWidth="md" sx={{ mt: 3, mb: 4 }}>
+      {/* The theme toggle stays. Hiding it here meant the one page a reader is most likely
+          to sit and read on was also the one page where they could not change the scheme. */}
+      <ResponsiveDrawer showAbout={false} />
+      <Container component="main" maxWidth="md" sx={{ mt: 3, mb: 4 }}>
         <Button
           startIcon={<ArrowBackIcon />}
           onClick={() => router.push("/")}
@@ -179,6 +182,7 @@ function About({ canonical, jsonLd }: AboutProps): React.ReactElement {
           </Grid>
         </Box>
       </Container>
+      <Footer />
     </React.Fragment>
   );
 }

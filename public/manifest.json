@@ -1,6 +1,7 @@
 {
-  "short_name": "FLDB",
+  "short_name": "FLDb",
   "name": "Food Lovers Database",
+  "description": "Restaurants reviewed by India's best food vloggers, searchable and sorted by what is nearest to you.",
   "icons": [
     {
       "src": "/favicon.ico",
@@ -10,16 +11,24 @@
     {
       "src": "/img/logo-192.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "purpose": "any"
     },
     {
       "src": "/img/logo-512.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "/img/logo-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
     }
   ],
   "start_url": "/",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "theme_color": "#f9f9fb",
+  "background_color": "#f9f9fb"
 }

@@ -13,14 +13,17 @@ import Image from "next/image";
 import NextLink from "next/link";
 import { useRouter } from "next/router";
 import {
-  Restaurant as RestaurantIcon,
   LocationOn as LocationOnIcon,
   Directions as DirectionsIcon,
   MyLocation as MyLocationIcon,
   NearMe as NearMeIcon,
   PhotoCamera as PhotoCameraIcon,
   Videocam as VideocamIcon,
+  DoNotDisturbOn as DoNotDisturbOnIcon,
 } from "@mui/icons-material";
+import { attributionText, isYouTubeThumbnail } from "../../utils/images";
+import { VegMark } from "../ui/VegMark";
+import { formatCount } from "../ui/PlaceMeta";
 
 interface FoodCardProps {
   slug: string;
@@ -41,21 +44,14 @@ interface FoodCardProps {
    */
   onRequestLocation: () => Promise<boolean>;
   rating?: number;
+  /** Number of Google ratings behind `rating`. A score alone says very little. */
+  ratingsTotal?: number;
+  /** Google's `business_status`. Anything other than OPERATIONAL is called out. */
+  businessStatus?: string;
   url?: string;
   /** Google's html_attributions for the place photo; required to be displayed. */
   photoAttribution?: string[];
 }
-
-/**
- * YouTube thumbnails are already well-compressed JPEGs on Google's own CDN, which serves
- * them for free. Routing them through Vercel's optimizer would spend a hard-capped resource
- * (5,000 image transformations/month on Hobby, shared with the place photos) for very little
- * gain, so they are rendered as-is. Place photos from blob storage stay optimised.
- *
- * Keyed on the host rather than the `source` field, since the single-thumbnail fallback
- * path carries no source.
- */
-const isYouTubeThumbnail = (url: string): boolean => url.includes("i.ytimg.com");
 
 /** How long each photo holds before the next one begins fading in. */
 const DWELL_MS = 5000;
@@ -76,16 +72,6 @@ const kenBurns = keyframes`
   from { transform: scale(1); }
   to   { transform: scale(1.06); }
 `;
-
-/**
- * Google returns attributions as HTML anchors. Render the text only. Injecting third-party
- * HTML into the page is not worth the XSS surface for a credit line.
- */
-const attributionText = (attributions?: string[]): string =>
-  (attributions ?? [])
-    .map((a) => a.replace(/<[^>]*>/g, "").trim())
-    .filter(Boolean)
-    .join(", ");
 
 export default function FoodCard(props: FoodCardProps): React.ReactElement {
   const router = useRouter();
@@ -429,9 +415,33 @@ export default function FoodCard(props: FoodCardProps): React.ReactElement {
         }}
       >
         <Stack direction="column" spacing={1} alignItems="flex-start">
+          {/*
+            Google says this place has shut, and the card used to look exactly like any
+            other. It is the one badge worth putting above the veg chip: a wasted trip is
+            the most expensive mistake this feed can cause.
+          */}
+          {(props.businessStatus === "CLOSED_TEMPORARILY" ||
+            props.businessStatus === "CLOSED_PERMANENTLY") && (
+            <Chip
+              icon={<DoNotDisturbOnIcon sx={{ fontSize: "1rem !important", color: "white !important" }} />}
+              label={
+                props.businessStatus === "CLOSED_PERMANENTLY"
+                  ? "Permanently closed"
+                  : "Temporarily closed"
+              }
+              size="small"
+              sx={{
+                bgcolor: "error.main",
+                color: "white",
+                fontWeight: "bold",
+                boxShadow: 3,
+              }}
+            />
+          )}
+
           {props.hasVeg && (
             <Chip
-              icon={<RestaurantIcon sx={{ fontSize: "1rem !important", color: "white !important" }} />}
+              icon={<VegMark sx={{ fontSize: "1rem !important", color: "white !important" }} />}
               label="Veg Friendly"
               size="small"
               sx={{
@@ -562,6 +572,13 @@ export default function FoodCard(props: FoodCardProps): React.ReactElement {
             <Typography variant="body2" sx={{ fontWeight: "bold", opacity: 0.9 }}>
               {ratingValue}
             </Typography>
+            {/* The count behind the score. 4.2 from nine people and 4.2 from four thousand
+                are different claims, and only one of them was being made. */}
+            {typeof props.ratingsTotal === "number" && props.ratingsTotal > 0 && (
+              <Typography variant="body2" sx={{ opacity: 0.7 }}>
+                ({formatCount(props.ratingsTotal)})
+              </Typography>
+            )}
           </Stack>
         )}
 

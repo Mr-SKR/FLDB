@@ -17,11 +17,13 @@ import {
   RotateLeft as RotateLeftIcon,
   Search as SearchIcon,
   Clear as ClearIcon,
-  Restaurant as RestaurantIcon,
   GpsFixed as GpsFixedIcon,
   GpsOff as GpsOffIcon,
 } from "@mui/icons-material";
 import { UserLocation } from "../../hooks/useGeolocation";
+import { SortMode } from "../../hooks/usePlaceFilters";
+import { describeResultCount, MinRatingSelect, SortSelect } from "./FilterControls";
+import { VegMark } from "./VegMark";
 import { alpha, keyframes } from "@mui/material/styles";
 
 const pulse = keyframes`
@@ -43,10 +45,17 @@ interface FilterSectionProps {
   clearLocation: () => void;
   hasVeg: boolean;
   setHasVeg: (val: boolean) => void;
-  /** How many places the current filters match, for live feedback. */
-  resultCount: number;
-  /** True when more pages remain, so the count is reported as a floor rather than a total. */
-  hasMore: boolean;
+  sortBy: SortMode;
+  setSortBy: (val: SortMode) => void;
+  minRating: number;
+  setMinRating: (val: number) => void;
+  /**
+   * How many places match, across every page, or null before the API has said.
+   *
+   * Was `resultCount` (the number loaded so far) paired with `hasMore` to render it as
+   * "10+". That is a paging statistic, not a filter result.
+   */
+  totalCount: number | null;
   /** True while a query is in flight, so a stale count is not shown as if it were the answer. */
   isSearching: boolean;
 }
@@ -59,8 +68,11 @@ export const FilterSection: React.FC<FilterSectionProps> = ({
   clearLocation,
   hasVeg,
   setHasVeg,
-  resultCount,
-  hasMore,
+  sortBy,
+  setSortBy,
+  minRating,
+  setMinRating,
+  totalCount,
   isSearching,
 }) => {
   /**
@@ -68,16 +80,9 @@ export const FilterSection: React.FC<FilterSectionProps> = ({
    *
    * Typing here updates the feed behind the drawer, which the user cannot see, so without
    * this the only way to find out whether a search matched anything was to close the sheet.
-   * `hasMore` means only the first page has been fetched, so the count is a floor: reporting
-   * a bare "10 places" when hundreds match would be worse than saying nothing.
    */
-  const filtersActive = Boolean(searchValue) || hasVeg;
-  const noun = resultCount === 1 && !hasMore ? "place" : "places";
-  const countLabel = isSearching
-    ? "Searching…"
-    : resultCount === 0
-      ? "Nothing matches these filters"
-      : `${resultCount}${hasMore ? "+" : ""} ${noun}${filtersActive ? " match your filters" : ""}`;
+  const filtersActive = Boolean(searchValue) || hasVeg || minRating > 0;
+  const countLabel = describeResultCount(totalCount, isSearching, filtersActive);
 
   return (
     <Box>
@@ -126,11 +131,28 @@ export const FilterSection: React.FC<FilterSectionProps> = ({
               variant="caption"
               sx={{
                 fontWeight: 600,
-                color: resultCount === 0 && !isSearching ? "warning.main" : "text.secondary",
+                color: totalCount === 0 && !isSearching ? "warning.main" : "text.secondary",
               }}
             >
               {countLabel}
             </Typography>
+          </Box>
+        </Box>
+
+        {/* Ordering and rating floor. Both are full width and side by side: they are the
+            two controls most likely to be reached for after a search, and a sheet this
+            narrow has room for exactly two. */}
+        <Box sx={{ display: "flex", gap: 1.5 }}>
+          <Box sx={{ flex: 1, "& .MuiFormControl-root": { width: "100%" } }}>
+            <SortSelect
+              value={sortBy}
+              onChange={setSortBy}
+              hasLocation={!!userLocation}
+              size="medium"
+            />
+          </Box>
+          <Box sx={{ flex: 1, "& .MuiFormControl-root": { width: "100%" } }}>
+            <MinRatingSelect value={minRating} onChange={setMinRating} size="medium" />
           </Box>
         </Box>
 
@@ -170,7 +192,7 @@ export const FilterSection: React.FC<FilterSectionProps> = ({
               control={<Switch color="success" inputProps={{ "aria-label": "Veg friendly only" }} />}
               label={
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <RestaurantIcon fontSize="small" color={hasVeg ? "success" : "action"} />
+                  <VegMark fontSize="small" color={hasVeg ? "success" : "action"} />
                   <Typography
                     variant="body2"
                     sx={{

@@ -26,6 +26,10 @@ const LIST_FIELD_NAMES = [
   "allThumbnails",
   "formatted_address",
   "rating",
+  // Both are scalars, and both are rendered on the card: a rating without its count says
+  // very little, and a place Google lists as closed must not look like a normal result.
+  "user_ratings_total",
+  "business_status",
   "url",
   "photoUrl",
   "photoUpdatedAt",
@@ -84,8 +88,11 @@ export interface NearbyPlace {
   name: string;
   formatted_address?: string;
   rating?: number;
+  user_ratings_total?: number;
   hasVeg?: boolean;
   distanceKm: number;
+  /** One image for the card. Absent when the place has no usable photo. */
+  image?: string;
 }
 
 interface GeoIndexEntry {
@@ -93,7 +100,9 @@ interface GeoIndexEntry {
   name: string;
   formatted_address?: string;
   rating?: number;
+  user_ratings_total?: number;
   hasVeg?: boolean;
+  image?: string;
   lat: number;
   lng: number;
 }
@@ -120,16 +129,22 @@ const loadGeoIndex = (): Promise<GeoIndexEntry[]> => {
 
   const entries = (async () => {
     await dbConnect();
+    // `photoUrl` and `thumbnail` are read so the nearby cards can carry an image. Both are
+    // short strings; `allThumbnails` is deliberately not loaded, since one picture is all a
+    // cross-link needs and this index holds every place in the catalogue at once.
     const docs = await Place.find(
       { "geometry.location.lat": { $ne: null }, "geometry.location.lng": { $ne: null } },
-      "slug name formatted_address rating hasVeg geometry.location"
+      "slug name formatted_address rating user_ratings_total hasVeg geometry.location photoUrl thumbnail"
     ).lean<
       {
         slug: string;
         name: string;
         formatted_address?: string;
         rating?: number;
+        user_ratings_total?: number;
         hasVeg?: boolean;
+        photoUrl?: string;
+        thumbnail?: { small?: string; large?: string };
         geometry?: { location?: { lat?: number; lng?: number } };
       }[]
     >();
@@ -146,6 +161,21 @@ const loadGeoIndex = (): Promise<GeoIndexEntry[]> => {
         formatted_address: doc.formatted_address,
         rating: doc.rating,
         hasVeg: doc.hasVeg,
+        /*
+          Both keys are omitted rather than set to `undefined` when absent.
+
+          These end up in `getStaticProps` props, and Next refuses to serialize an explicit
+          `undefined` ("cannot be serialized as JSON"), which would fail the build for any
+          place whose neighbour happens to have no photo. An absent key serializes fine.
+
+          Place photo first, matching the ordering the sync applies to `allThumbnails`.
+        */
+        ...(typeof doc.user_ratings_total === "number"
+          ? { user_ratings_total: doc.user_ratings_total }
+          : {}),
+        ...(doc.photoUrl || doc.thumbnail?.large || doc.thumbnail?.small
+          ? { image: (doc.photoUrl || doc.thumbnail?.large || doc.thumbnail?.small) as string }
+          : {}),
         lat: doc.geometry!.location!.lat as number,
         lng: doc.geometry!.location!.lng as number,
       }));
@@ -184,13 +214,12 @@ export const getNearbyPlaces = async (
 
   return index
     .filter((entry) => entry.slug !== place.slug)
-    .map((entry) => ({
-      slug: entry.slug,
-      name: entry.name,
-      formatted_address: entry.formatted_address,
-      rating: entry.rating,
-      hasVeg: entry.hasVeg,
-      distanceKm: getDisplacementFromLatLonInKm(lat, lng, entry.lat, entry.lng),
+    .map(({ lat: _lat, lng: _lng, ...entry }) => ({
+      // Spread rather than picked field by field, so the optional keys the index chose to
+      // omit stay omitted instead of reappearing as an unserializable `undefined`. The
+      // coordinates are dropped: they are the index's business, not the card's.
+      ...entry,
+      distanceKm: getDisplacementFromLatLonInKm(lat, lng, _lat, _lng),
     }))
     .sort((a, b) => a.distanceKm - b.distanceKm)
     .slice(0, limit)

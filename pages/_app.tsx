@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Experimental_CssVarsProvider as CssVarsProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import type { AppProps } from "next/app";
 import HEAD from "next/head";
-import { useRouter } from "next/router";
 
 // The theme asks for Roboto (`components/ui/Theme.ts`), but nothing was loading it, so every
 // visitor silently got the Helvetica/Arial fallback. These are the weights the theme uses.
@@ -13,7 +12,7 @@ import "@fontsource/roboto/500.css";
 import "@fontsource/roboto/700.css";
 
 import theme from "../components/ui/Theme";
-import { LoadingScreen } from "../components/ui/LoadingScreen";
+import { RouteProgress } from "../components/ui/RouteProgress";
 import {
   SITE_DESCRIPTION,
   SITE_LOCALE,
@@ -22,29 +21,6 @@ import {
 } from "../config/constants";
 
 function MyApp({ Component, pageProps }: AppProps) {
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
-
-  // Router loading state
-  useEffect(() => {
-    const handleStart = (url: string) => {
-      if (url !== router.asPath) {
-        setLoading(true);
-      }
-    };
-    const handleComplete = () => setLoading(false);
-
-    router.events.on("routeChangeStart", handleStart);
-    router.events.on("routeChangeComplete", handleComplete);
-    router.events.on("routeChangeError", handleComplete);
-
-    return () => {
-      router.events.off("routeChangeStart", handleStart);
-      router.events.off("routeChangeComplete", handleComplete);
-      router.events.off("routeChangeError", handleComplete);
-    };
-  }, [router]);
-
   return (
     <>
       {/*
@@ -61,12 +37,27 @@ function MyApp({ Component, pageProps }: AppProps) {
         <meta property="og:type" content="website" key="og:type" />
         {/* Tells search engines the preferred display name for the site in results. */}
         <meta name="application-name" content={SITE_NAME} />
+        {/* Browser chrome follows the colour scheme, on every page rather than only the
+            home feed, which is where these used to live. They track the OS preference
+            rather than the in-app toggle, which is as far as the tag goes. */}
+        <meta
+          name="theme-color"
+          media="(prefers-color-scheme: light)"
+          content="#f9f9fb"
+          key="theme-color-light"
+        />
+        <meta
+          name="theme-color"
+          media="(prefers-color-scheme: dark)"
+          content="#121212"
+          key="theme-color-dark"
+        />
       </HEAD>
       {/* defaultMode="system" honours the OS preference until the user picks one;
           the choice is persisted by MUI and replayed pre-paint by InitColorSchemeScript. */}
       <CssVarsProvider theme={theme} defaultMode="system">
         <CssBaseline />
-        {loading && <LoadingScreen />}
+        <RouteProgress />
         <Component {...pageProps} />
       </CssVarsProvider>
     </>

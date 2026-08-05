@@ -60,11 +60,12 @@ export const MobileControls: React.FC = () => {
           boxShadow: "0 2px 8px rgba(0,0,0,0.5)",
         }}
       >
-        {/* This control shows the *current* mode, the opposite convention to the desktop
-            header, which shows the mode being switched to. Preserved as-is rather than
-            unified here, since only one of the two is ever on screen at a given width. */}
-        <Brightness7Icon sx={showInLightOnly} />
-        <Brightness4Icon sx={showInDarkOnly} />
+        {/* Both are rendered; CSS shows one. The icon indicates the mode being switched
+            *to*, matching the desktop header. The two used to disagree: this one showed the
+            current mode, so the same tap was illustrated by opposite glyphs depending on
+            the width of the window. */}
+        <Brightness7Icon sx={showInDarkOnly} />
+        <Brightness4Icon sx={showInLightOnly} />
       </IconButton>
     </>
   );

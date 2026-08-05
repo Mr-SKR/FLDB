@@ -43,3 +43,33 @@ export const SITE_LOCALE = "en_IN";
 
 /** How many nearby places to cross-link from a place page. */
 export const NEARBY_PLACES_COUNT = 6;
+
+/**
+ * Orderings the feed offers, shared by the API and the client.
+ *
+ * Defined here rather than in either of them because both must agree exactly: the client
+ * puts these strings in the query string and the API validates against the same list,
+ * silently falling back to `nearest` for anything it does not recognise. Two copies of the
+ * list would let a renamed mode fail as a no-op rather than as an error, and `config/` is
+ * already the module both sides import (it must stay free of Node-only dependencies).
+ */
+export const SORT_MODES = ["nearest", "rating", "name"] as const;
+
+export type SortMode = (typeof SORT_MODES)[number];
+
+/** Narrows an untrusted value (query string, sessionStorage) to a known ordering. */
+export const isSortMode = (value: unknown): value is SortMode =>
+  SORT_MODES.includes(value as SortMode);
+
+/** The ordering used when none is chosen or the given one is not recognised. */
+export const DEFAULT_SORT_MODE: SortMode = "nearest";
+
+/**
+ * The time zone every catalogued place sits in.
+ *
+ * Used to decide whether a restaurant is open right now. The visitor's own zone is the
+ * wrong clock to read: someone planning a Karnataka trip from another country would be
+ * told a place is shut when it is mid-service. A single constant is honest about the
+ * assumption; if the catalogue ever spans zones this has to become per-place data.
+ */
+export const PLACES_TIME_ZONE = "Asia/Kolkata";

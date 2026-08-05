@@ -15,6 +15,7 @@ import {
 } from "@mui/icons-material";
 import { PlaceInterface } from "../../types/types";
 import { stripPlusCode } from "../../utils/formatAddress";
+import { formatCount } from "./PlaceMeta";
 
 interface RestaurantInfoProps {
   data: PlaceInterface;
@@ -132,16 +133,16 @@ export const RestaurantInfo: React.FC<RestaurantInfoProps> = ({ data }) => {
         >
           <GradeIcon color="warning" sx={{ fontSize: "1.5rem" }} />
           <Box>
-            <Typography 
-              variant="caption" 
-              color="text.secondary" 
-              sx={{ 
-                fontWeight: "bold", 
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{
+                fontWeight: "bold",
                 textTransform: "uppercase",
                 display: { xs: "none", sm: "block" }
               }}
             >
-              Rating
+              Reviews
             </Typography>
             {/* Both of these cards are links, and neither looked like one: no underline,
                 no icon, nothing to distinguish them from the static info panels above.
@@ -157,13 +158,16 @@ export const RestaurantInfo: React.FC<RestaurantInfoProps> = ({ data }) => {
                 gap: 0.5,
               }}
             >
+              {/* The score itself now sits under the page heading, beside the open/closed
+                  state, so repeating it here would say the same thing twice within one
+                  screen. What this card uniquely offers is the way through to the reviews
+                  it summarises, so it states that instead. */}
               {data.rating ? (
                 <>
-                  <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
-                    {data.rating} / 5 (Reviews)
-                  </Box>
-                  <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>
-                    {data.rating} / 5
+                  <Box component="span">
+                    {typeof data.user_ratings_total === "number" && data.user_ratings_total > 0
+                      ? `${formatCount(data.user_ratings_total)} on Google`
+                      : "Read on Google"}
                   </Box>
                   <OpenInNewIcon sx={{ fontSize: "0.85rem", opacity: 0.7 }} />
                 </>

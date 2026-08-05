@@ -10,11 +10,11 @@ import { useColorScheme } from "@mui/material/styles";
 import { showInDarkOnly, showInLightOnly } from "../ui/Theme";
 
 interface HeaderProps {
-  showThemeToggle?: boolean;
+  /** Hidden on the About page itself, where it would link to the page you are on. */
   showAbout?: boolean;
 }
 
-export default function SearchAppBar({ showThemeToggle = true, showAbout = true }: HeaderProps) {
+export default function SearchAppBar({ showAbout = true }: HeaderProps) {
   const router = useRouter();
   const { mode, systemMode, setMode } = useColorScheme();
 
@@ -48,22 +48,20 @@ export default function SearchAppBar({ showThemeToggle = true, showAbout = true 
             </IconButton>
           </Box>
 
-          {showThemeToggle && (
-            <IconButton
-              sx={{ ml: 1 }}
-              onClick={toggleColorMode}
-              color="inherit"
-              // Static, and describes the control rather than the state it would move to.
-              // A label that names the target mode has to be computed from the resolved
-              // scheme, which is not known until after hydration; see the note on
-              // `showInDarkOnly`. Naming the action is accurate under both schemes.
-              aria-label="Toggle light and dark mode"
-            >
-              {/* Both are rendered; CSS shows one. Icon indicates the mode being switched to. */}
-              <Brightness7Icon sx={showInDarkOnly} />
-              <Brightness4Icon sx={showInLightOnly} />
-            </IconButton>
-          )}
+          <IconButton
+            sx={{ ml: 1 }}
+            onClick={toggleColorMode}
+            color="inherit"
+            // Static, and describes the control rather than the state it would move to.
+            // A label that names the target mode has to be computed from the resolved
+            // scheme, which is not known until after hydration; see the note on
+            // `showInDarkOnly`. Naming the action is accurate under both schemes.
+            aria-label="Toggle light and dark mode"
+          >
+            {/* Both are rendered; CSS shows one. Icon indicates the mode being switched to. */}
+            <Brightness7Icon sx={showInDarkOnly} />
+            <Brightness4Icon sx={showInLightOnly} />
+          </IconButton>
 
           {showAbout && (
             <IconButton
