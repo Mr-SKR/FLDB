@@ -14,8 +14,14 @@ export const LOCATION_MOVEMENT_THRESHOLD_KM = 0.025;
 export const LOCATION_MAX_SILENT_FAILURES = 3;
 
 /**
- * Canonical public origin. Server-side code should prefer `process.env.HOST` and fall
- * back to this; it is deliberately a plain string so it is also safe in client bundles.
+ * Canonical public origin, and the last fallback in `getSiteUrl()`.
+ *
+ * Resolution order lives in `lib/seo.ts`: `NEXT_PUBLIC_SITE_URL` first, then `HOST` for
+ * compatibility with existing deployments, then this. Prefer `NEXT_PUBLIC_SITE_URL` when
+ * configuring an environment — `HOST` is the bind address on many Node hosts, so a
+ * platform setting `HOST=0.0.0.0` would silently rewrite every canonical URL on the site.
+ *
+ * Deliberately a plain string so it is also safe in client bundles.
  */
 export const SITE_URL = "https://foodloversdatabase.com";
 

@@ -7,6 +7,7 @@ import {
 } from "@mui/icons-material";
 import { useRouter } from "next/router";
 import { useColorScheme } from "@mui/material/styles";
+import { showInDarkOnly, showInLightOnly } from "../ui/Theme";
 
 interface HeaderProps {
   showThemeToggle?: boolean;
@@ -52,9 +53,15 @@ export default function SearchAppBar({ showThemeToggle = true, showAbout = true 
               sx={{ ml: 1 }}
               onClick={toggleColorMode}
               color="inherit"
-              aria-label={resolvedMode === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              // Static, and describes the control rather than the state it would move to.
+              // A label that names the target mode has to be computed from the resolved
+              // scheme, which is not known until after hydration; see the note on
+              // `showInDarkOnly`. Naming the action is accurate under both schemes.
+              aria-label="Toggle light and dark mode"
             >
-              {resolvedMode === "dark" ? <Brightness7Icon /> : <Brightness4Icon />}
+              {/* Both are rendered; CSS shows one. Icon indicates the mode being switched to. */}
+              <Brightness7Icon sx={showInDarkOnly} />
+              <Brightness4Icon sx={showInLightOnly} />
             </IconButton>
           )}
 

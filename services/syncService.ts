@@ -310,6 +310,7 @@ export const syncSingleVideo = async (videoId: string, mode: "soft" | "hard" = "
   const existingVideo = await Video.findOne({ videoId });
   
   // If soft sync and video exists, check if we need to upgrade to hasVeg
+  let upgradedToVeg = false;
   if (mode === "soft" && existingVideo) {
     if (isVeg && !existingVideo.hasVeg) {
       logger.info(`UPGRADING: Video ${videoId} exists but now identified as Veg. Updating hasVeg to true.`, "syncService");
@@ -318,7 +319,14 @@ export const syncSingleVideo = async (videoId: string, mode: "soft" | "hard" = "
 
       // Update all associated places' hasVeg status
       await Place.updateMany({ videoIds: videoId }, { hasVeg: true });
-      return { status: "updated", message: "Video upgraded to Veg status" };
+
+      // Deliberately falls through to the resolution check below rather than returning.
+      //
+      // Returning here meant a video whose places never saved, and which was later
+      // reclassified as veg, took this branch and was reported as handled without anyone
+      // ever retrying its places. That is precisely the stranding `placesResolvedAt`
+      // exists to prevent, reached by the one path that skipped the check.
+      upgradedToVeg = true;
     }
 
     // Skip on *resolution*, not on the video record existing.
@@ -329,6 +337,10 @@ export const syncSingleVideo = async (videoId: string, mode: "soft" | "hard" = "
     // record alone stranded those places permanently, because a soft sync would never look
     // at the video again and only a hand-run hard sync could recover them.
     if (await hasResolvedPlaces(existingVideo, videoId)) {
+      if (upgradedToVeg) {
+        logger.info(`UPDATED: Video ${videoId} upgraded to Veg; places already resolved.`, "syncService");
+        return { status: "updated", message: "Video upgraded to Veg status" };
+      }
       logger.info(`SKIPPED: Video ${videoId} already exists in database (Soft Sync)`, "syncService");
       return { status: "skipped", message: "Video already exists" };
     }

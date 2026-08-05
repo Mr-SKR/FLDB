@@ -57,7 +57,7 @@ const Home: React.FC<HomeProps> = ({ data, canonical, jsonLd }) => {
     error: geoError,
     permissionState,
     locationPending,
-    refreshLocation,
+    requestLocation,
     clearError,
     clearLocation,
   } = useGeolocation();
@@ -79,6 +79,8 @@ const Home: React.FC<HomeProps> = ({ data, canonical, jsonLd }) => {
     loadMore,
     resetFilters,
     restoredFeed,
+    feedError,
+    retryFetch,
   } = usePlaceFilters(data, userLocation, feedContainerRef);
 
   // Auto-scroll to top when location is granted to show the newly sorted first item.
@@ -110,7 +112,7 @@ const Home: React.FC<HomeProps> = ({ data, canonical, jsonLd }) => {
 
   const handleAllowLocation = async () => {
     setIsLocationPromptOpen(false);
-    await refreshLocation();
+    await requestLocation();
   };
 
   const handleContinueWithout = () => {
@@ -145,10 +147,19 @@ const Home: React.FC<HomeProps> = ({ data, canonical, jsonLd }) => {
   const showLoadingOverlay = isInitialLoading || locationPending;
 
   return (
-    <Box 
-      sx={{ 
-        bgcolor: "#000", 
-        height: "100dvh", 
+    <Box
+      sx={{
+        /*
+          Follows the colour scheme rather than pinning the page to black.
+
+          The cards are full-bleed photography and stay dark whatever the scheme, which is
+          what made this easy to miss: only the surround changes, and on a phone the cards
+          cover all of it. On a desktop the feed is capped at 1280px, so the majority of a
+          wide window was this element, and it stayed pure black with the toggle set to
+          light — the theme switch appeared to do nothing on the home page.
+        */
+        bgcolor: "background.default",
+        height: "100dvh",
         width: "100vw",
         display: "flex",
         flexDirection: "column",
@@ -166,7 +177,21 @@ const Home: React.FC<HomeProps> = ({ data, canonical, jsonLd }) => {
       <Head>
         {/* The canonical viewport tag lives in _app.tsx. It deliberately does not set
             maximum-scale/user-scalable=0, which would disable pinch-zoom (WCAG 1.4.4). */}
-        <meta name="theme-color" content="#000000" />
+        {/* Browser chrome follows the scheme too. A single hard-coded black left the
+            address bar dark against a light page. These track the OS preference rather
+            than the in-app toggle, which is as far as the tag goes. */}
+        <meta
+          name="theme-color"
+          media="(prefers-color-scheme: light)"
+          content="#f9f9fb"
+          key="theme-color-light"
+        />
+        <meta
+          name="theme-color"
+          media="(prefers-color-scheme: dark)"
+          content="#121212"
+          key="theme-color-dark"
+        />
       </Head>
 
       {/*
@@ -230,7 +255,9 @@ const Home: React.FC<HomeProps> = ({ data, canonical, jsonLd }) => {
           flexGrow: 1,
           display: "flex",
           justifyContent: "center",
-          bgcolor: "#111", // Dark gutter color
+          // The gutter either side of the capped feed. `paper` rather than `default` keeps
+          // the slight lift the old #111-on-#000 pairing had, in whichever scheme is active.
+          bgcolor: "background.paper",
           overflow: "hidden",
           position: "relative",
         }}
@@ -253,11 +280,13 @@ const Home: React.FC<HomeProps> = ({ data, canonical, jsonLd }) => {
             containerRef={feedContainerRef}
             filteredPlaces={filteredPlaces}
             userLocation={userLocation}
-            refreshLocation={refreshLocation}
+            requestLocation={requestLocation}
             isLoadingMore={isLoadingMore}
             isSearching={isSearching}
             observerTarget={observerTarget}
             onClearFilters={resetFilters}
+            feedError={feedError}
+            onRetry={retryFetch}
           />
 
           {/* Filter FAB - Now anchored to the feed wrapper */}
@@ -345,7 +374,7 @@ const Home: React.FC<HomeProps> = ({ data, canonical, jsonLd }) => {
             searchValue={searchValue}
             setSearchValue={setSearchValue}
             userLocation={userLocation}
-            refreshLocation={refreshLocation}
+            requestLocation={requestLocation}
             clearLocation={clearLocation}
             hasVeg={hasVeg}
             setHasVeg={setHasVeg}

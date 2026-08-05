@@ -34,7 +34,12 @@ interface FilterSectionProps {
   searchValue: string;
   setSearchValue: (val: string) => void;
   userLocation: UserLocation | null;
-  refreshLocation: () => void;
+  /**
+   * Asks for the user's position. Arity 0 so that binding it straight to `onClick` cannot
+   * feed the click event into the geolocation hook's `silent` parameter, which is what
+   * previously routed both controls below down the path that discards errors.
+   */
+  requestLocation: () => Promise<boolean>;
   clearLocation: () => void;
   hasVeg: boolean;
   setHasVeg: (val: boolean) => void;
@@ -50,7 +55,7 @@ export const FilterSection: React.FC<FilterSectionProps> = ({
   searchValue,
   setSearchValue,
   userLocation,
-  refreshLocation,
+  requestLocation,
   clearLocation,
   hasVeg,
   setHasVeg,
@@ -223,7 +228,7 @@ export const FilterSection: React.FC<FilterSectionProps> = ({
                 </Box>
                 <IconButton
                   size="small"
-                  onClick={refreshLocation}
+                  onClick={requestLocation}
                   aria-label="Refresh my location"
                   sx={{ bgcolor: "action.hover" }}
                 >
@@ -258,7 +263,7 @@ export const FilterSection: React.FC<FilterSectionProps> = ({
               <Button
                 variant="contained"
                 startIcon={<GpsFixedIcon />}
-                onClick={refreshLocation}
+                onClick={requestLocation}
                 sx={{
                   borderRadius: "12px",
                   textTransform: "none",

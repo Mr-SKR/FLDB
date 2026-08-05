@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { Box, Typography, CircularProgress, Button } from "@mui/material";
-import { KeyboardArrowDown as KeyboardArrowDownIcon } from "@mui/icons-material";
+import {
+  KeyboardArrowDown as KeyboardArrowDownIcon,
+  Refresh as RefreshIcon,
+} from "@mui/icons-material";
 import { keyframes } from "@mui/material/styles";
 import Image from "next/image";
 import FoodCard from "../cards/Card";
@@ -19,23 +22,29 @@ const SCROLL_HINT_DISMISSED_KEY = "scrollHintSeen";
 interface FeedViewerProps {
   filteredPlaces: PlaceInterface[];
   userLocation: UserLocation | null;
-  refreshLocation: (force?: boolean) => Promise<boolean>;
+  requestLocation: () => Promise<boolean>;
   isLoadingMore: boolean;
   isSearching: boolean;
   observerTarget: React.RefObject<HTMLDivElement | null>;
   containerRef?: React.RefObject<HTMLDivElement | null>;
   onClearFilters: () => void;
+  /** Which request last failed, or null when the feed is healthy. */
+  feedError: null | "initial" | "more";
+  /** Re-issues the failed request. */
+  onRetry: () => void;
 }
 
 export const FeedViewer: React.FC<FeedViewerProps> = ({
   filteredPlaces,
   userLocation,
-  refreshLocation,
+  requestLocation,
   isLoadingMore,
   isSearching,
   observerTarget,
   containerRef,
   onClearFilters,
+  feedError,
+  onRetry,
 }) => {
   /**
    * "There is more below" hint for the phone feed.
@@ -94,7 +103,10 @@ export const FeedViewer: React.FC<FeedViewerProps> = ({
       sx={{
         width: "100%",
         height: "100%",
-        bgcolor: "black",
+        // Shows between the cards in the desktop grid (and behind a short feed), so it has
+        // to follow the scheme. The cards themselves stay black: they are full-bleed
+        // photography with white text burned into the overlay.
+        bgcolor: "background.default",
         position: "relative",
         overflowY: "scroll",
         "&::-webkit-scrollbar": { display: "none" },
@@ -132,14 +144,17 @@ export const FeedViewer: React.FC<FeedViewerProps> = ({
             thumbnail={place.thumbnail?.large || place.thumbnail?.small || ""}
             allThumbnails={place.allThumbnails}
             useLocation={!!userLocation}
-            setUseLocation={refreshLocation}
+            onRequestLocation={requestLocation}
             index={index}
             rating={place.rating}
             url={place.url}
             photoAttribution={place.photoAttribution}
           />
         ))
-      ) : !isSearching && (
+      ) : !isSearching && !feedError && (
+        // `!feedError` too: an empty list after a failed request is not an empty result
+        // set, and telling the reader nothing matched their filters would be a lie about
+        // why the screen is blank. The retry block below owns that case.
         <Box sx={{
           // Full width in the desktop grid; a lone cell in column one would look broken.
           gridColumn: "1 / -1",
@@ -149,8 +164,10 @@ export const FeedViewer: React.FC<FeedViewerProps> = ({
           flexDirection: "column",
           justifyContent: "center",
           alignItems: "center",
-          background: "linear-gradient(180deg, #121212 0%, #000000 100%)",
-          color: "white",
+          // Was a hard-coded dark gradient with white text, which in the light scheme put
+          // white on near-white. Theme tokens keep it legible in both.
+          bgcolor: "background.default",
+          color: "text.primary",
           p: 4,
           textAlign: "center"
         }}>
@@ -194,7 +211,43 @@ export const FeedViewer: React.FC<FeedViewerProps> = ({
       {/* Loading Indicator (Inside Feed) */}
       {isLoadingMore && (
         <Box sx={{ gridColumn: "1 / -1", py: 4, display: "flex", justifyContent: "center" }}>
-          <CircularProgress size={24} sx={{ color: "white" }} />
+          <CircularProgress size={24} />
+        </Box>
+      )}
+
+      {/*
+        Failed request, stated rather than swallowed.
+
+        A failing fetch used to leave the spinner simply stopping, with no way to tell a
+        rate-limited request from the end of the list. This is also the only thing that
+        gets the reader out of a failure now that the page counter no longer advances on
+        one: without a manual retry the feed would sit there until a filter changed.
+      */}
+      {!isLoadingMore && feedError && (
+        <Box
+          sx={{
+            gridColumn: "1 / -1",
+            py: 4,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 1,
+          }}
+        >
+          <Typography variant="body2" color="text.secondary">
+            {feedError === "more"
+              ? "Could not load more places."
+              : "Could not load places."}
+          </Typography>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={onRetry}
+            startIcon={<RefreshIcon />}
+            sx={{ borderRadius: "12px" }}
+          >
+            Try again
+          </Button>
         </Box>
       )}
 

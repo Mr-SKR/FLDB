@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useLayoutEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/router";
 import { PlaceInterface } from "../types/types";
-import { getDisplacementFromLatLonInKm } from "../utils/getGeoDisplacement";
+import { getDisplacementFromLatLonInKm, roundDistanceKm } from "../utils/getGeoDisplacement";
 import { UserLocation } from "./useGeolocation";
 import { logger } from "../lib/logger";
 import { PAGE_SIZE } from "../config/constants";
@@ -63,6 +63,15 @@ export const usePlaceFilters = (
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
+  /**
+   * Which kind of request last failed, or null when the feed is healthy.
+   *
+   * A failed fetch used to be completely silent: the handler only acted `if (res.ok)`, and
+   * the `catch` covers a rejected `fetch` but not a 4xx/5xx response, so the most likely
+   * failure of all (this endpoint's own 429) left the reader looking at a spinner that
+   * simply stopped. Distinguishing the two cases lets the retry re-issue the right request.
+   */
+  const [feedError, setFeedError] = useState<null | "initial" | "more">(null);
   /**
    * True when this mount put a saved feed back on screen.
    *
@@ -164,7 +173,14 @@ export const usePlaceFilters = (
     }
   }, [hasVeg, isHydrated]);
 
-  const fetchPlaces = useCallback(async (pageNum: number, search: string, veg: boolean, append: boolean = false) => {
+  /**
+   * Issues one page request.
+   *
+   * Returns whether this request actually delivered results, which is what lets `loadMore`
+   * decide if the page counter may advance. A superseded request reports false too: the
+   * newer request owns that decision.
+   */
+  const fetchPlaces = useCallback(async (pageNum: number, search: string, veg: boolean, append: boolean = false): Promise<boolean> => {
     const requestId = ++requestIdRef.current;
 
     // Determine loading state
@@ -174,6 +190,7 @@ export const usePlaceFilters = (
     } else {
       setIsLoadingMore(true);
     }
+    setFeedError(null);
 
     try {
       let url = `/api/search?q=${encodeURIComponent(search)}&veg=${veg}&page=${pageNum}&limit=${PAGE_SIZE}`;
@@ -182,20 +199,32 @@ export const usePlaceFilters = (
       }
 
       const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        // A newer request has been issued since this one started; its results are the
-        // ones the user is waiting for, so drop these rather than overwrite them.
-        if (requestId !== requestIdRef.current) return;
-        if (append) {
-          setPlaces(prev => [...prev, ...data]);
-        } else {
-          setPlaces(data);
-        }
-        setHasMore(data.length === PAGE_SIZE);
+      // A non-ok response is a failure, not a no-op. Treating it as one meant a rate-limited
+      // or erroring request left `places` untouched and `hasMore` still true, with nothing
+      // on screen to say so.
+      if (!res.ok) {
+        throw new Error(`Search request failed (HTTP ${res.status})`);
       }
+
+      const data = await res.json();
+      // A newer request has been issued since this one started; its results are the
+      // ones the user is waiting for, so drop these rather than overwrite them.
+      if (requestId !== requestIdRef.current) return false;
+      if (append) {
+        setPlaces(prev => [...prev, ...data]);
+      } else {
+        setPlaces(data);
+      }
+      setHasMore(data.length === PAGE_SIZE);
+      return true;
     } catch (err) {
       logger.error("Fetch failed", "usePlaceFilters", err);
+      // Only the newest request may report an error, for the same reason it alone owns the
+      // loading flags: a superseded failure would show a retry for a request nobody wants.
+      if (requestId === requestIdRef.current) {
+        setFeedError(append ? "more" : "initial");
+      }
+      return false;
     } finally {
       // Only the newest request owns the loading flags; a superseded one clearing them
       // would hide the spinner while its replacement is still in flight.
@@ -375,16 +404,39 @@ export const usePlaceFilters = (
     return () => router.events.off("routeChangeStart", capture);
   }, [router, containerRef]);
 
-  const loadMore = useCallback(() => {
+  const loadMore = useCallback(async () => {
     if (!hasMore || isLoadingMore || isSearching || isInitialLoading) return;
     const nextPage = page + 1;
-    setPage(nextPage);
     // Must be the settled query, not the raw input: page 1 was fetched with
     // `debouncedSearch`, so paging with `searchValue` would append results for a
     // different query to the list already on screen whenever the user scrolls
     // within the 500ms debounce window.
-    fetchPlaces(nextPage, debouncedSearch, hasVeg, true);
+    const loaded = await fetchPlaces(nextPage, debouncedSearch, hasVeg, true);
+
+    /*
+      The counter advances only on success.
+
+      Advancing before the request (as this used to) had two consequences when a page
+      failed. The obvious one is a permanent hole in the feed: the next successful
+      `loadMore` fetched the page *after* the one that failed, so ten places vanished with
+      no indication. The subtler one is a retry spin. `page` is a dependency of this
+      callback, which is a dependency of the home page's IntersectionObserver callback, so
+      changing it tears down and recreates the observer; `observe()` always delivers an
+      initial callback, and at the bottom of the feed the sentinel is still intersecting,
+      so the failure immediately triggered another attempt, and another. Against a 429
+      that never converged.
+    */
+    if (loaded) setPage(nextPage);
   }, [hasMore, isLoadingMore, isSearching, isInitialLoading, page, debouncedSearch, hasVeg, fetchPlaces]);
+
+  /** Re-issues whichever request failed, for the retry affordance in the feed. */
+  const retryFetch = useCallback(() => {
+    if (feedError === "more") {
+      loadMore();
+      return;
+    }
+    fetchPlaces(1, debouncedSearch, hasVeg, false);
+  }, [feedError, loadMore, fetchPlaces, debouncedSearch, hasVeg]);
 
   const filteredPlaces = useMemo(() => {
     let result = [...places];
@@ -395,7 +447,7 @@ export const usePlaceFilters = (
         const placeLng = place.geometry?.location?.lng;
 
         if (placeLat != null && placeLng != null) {
-          const displacement = Math.ceil(
+          const displacement = roundDistanceKm(
             getDisplacementFromLatLonInKm(
               userLocation.lat,
               userLocation.long,
@@ -433,5 +485,7 @@ export const usePlaceFilters = (
     loadMore,
     resetFilters,
     restoredFeed,
+    feedError,
+    retryFetch,
   };
 };

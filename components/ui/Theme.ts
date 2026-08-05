@@ -113,4 +113,29 @@ export const theme = extendTheme({
   },
 });
 
+/**
+ * Show an element under exactly one colour scheme, decided in CSS rather than in React.
+ *
+ * `useColorScheme()` reports `mode: undefined` on the server and on the very first client
+ * render, resolving only after mount. Anything that branches on it therefore renders one
+ * way into the HTML and another way immediately after hydration, which React reports as a
+ * mismatch and then refuses to patch up: it warns in development, and in production it
+ * keeps whichever markup it happens to have. The theme toggles were doing this with their
+ * icon, their `data-testid` and their `aria-label`, so a dark-mode visitor could be left
+ * with a control labelled for the state it was not in.
+ *
+ * `InitColorSchemeScript` has already stamped `data-mui-color-scheme` onto <html> before
+ * first paint, so letting CSS pick keeps the server and client markup byte-identical while
+ * still painting the correct icon with no flash.
+ */
+export const showInDarkOnly = {
+  display: "none",
+  '[data-mui-color-scheme="dark"] &': { display: "inline-block" },
+} as const;
+
+export const showInLightOnly = {
+  display: "inline-block",
+  '[data-mui-color-scheme="dark"] &': { display: "none" },
+} as const;
+
 export default theme;

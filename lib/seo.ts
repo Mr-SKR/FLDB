@@ -272,7 +272,26 @@ const parseWeekdayLine = (line: string): OpeningHoursSpecification[] => {
     // The closing time must carry a meridiem; it is the anchor the opening time inherits.
     if (!open || !close || !close.meridiem) continue;
 
-    const closes = to24Hour(close, close.meridiem);
+    /*
+      A midnight close is written as the *end* of the day, not the start of it.
+
+      "9:00 AM – 12:00 AM" parses to a closing time of 00:00, which is numerically before
+      every opening time it can pair with. `Open 24 hours` in the branch above already
+      settled the convention for this, using 23:59; matching it here keeps the two paths
+      from describing the same wall-clock moment two different ways.
+
+      Normalised before the straddle check below, not after, so the comparison sees the
+      real end of the interval. With the raw 00:00 a bare-meridiem opening such as
+      "9:00 – 12:00 AM" looked like it ran backwards and was flipped to 21:00, turning a
+      full day of trading into a three-hour evening. It also makes "12:00 – 12:00 AM"
+      resolve to 00:00–23:59, which is what a full day either side of midnight means.
+
+      Genuine overnight ranges ("6:00 PM – 2:00 AM") are untouched: a closing time past
+      midnight but before noon is left to wrap, which is the form Google documents.
+    */
+    const closes = to24Hour(close, close.meridiem) === "00:00"
+      ? "23:59"
+      : to24Hour(close, close.meridiem);
     let opens = to24Hour(open, open.meridiem ?? close.meridiem);
 
     // An inherited meridiem that puts opening after closing means the range straddles

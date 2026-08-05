@@ -21,7 +21,7 @@ import {
   Description as DescriptionIcon,
 } from "@mui/icons-material";
 import NextLink from "next/link";
-import ReactPlayer from "react-player";
+import dynamic from "next/dynamic";
 import { DiscussionEmbed } from "disqus-react";
 import { GetStaticPropsContext } from "next";
 
@@ -48,6 +48,17 @@ import {
   getSiteUrl,
   JsonLd as JsonLdType,
 } from "../../lib/seo";
+
+/**
+ * Client-only, because react-player suspends internally while it resolves the player for a
+ * given URL. Rendered on the server that resolves to nothing, so the markup React found on
+ * hydration never matched what it expected and the whole tree below was thrown away and
+ * re-rendered ("Hydration failed because the server rendered HTML didn't match the client").
+ *
+ * Nothing is lost by skipping it server-side: an iframe embed carries no text for a crawler,
+ * and the video's actual search signal is the `VideoObject` JSON-LD this page already emits.
+ */
+const ReactPlayer = dynamic(() => import("react-player"), { ssr: false });
 
 /** How long a prerendered place page may serve stale before ISR regenerates it. */
 const PLACE_REVALIDATE_SECONDS = 3600;

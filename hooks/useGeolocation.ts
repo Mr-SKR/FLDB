@@ -104,6 +104,21 @@ export const useGeolocation = () => {
   }, []);
 
   /**
+   * The user asking, explicitly, for their position.
+   *
+   * Takes no arguments, and that is the whole point. `refreshLocation` is only exposed
+   * through this wrapper because the silent flag is its first parameter, and every caller
+   * out here is an `onClick`: binding the handler directly passed a MouseEvent as `silent`,
+   * and passing a `true` meant to read as "force" did the same thing explicitly. Either way
+   * a deliberate request went down the silent path, where a denial or a GPS timeout is
+   * counted towards the auto-refresh failure budget and then discarded. The user tapped a
+   * button, nothing happened, and no error was ever shown.
+   *
+   * An arity-0 wrapper makes that unrepresentable rather than merely documented.
+   */
+  const requestLocation = useCallback(() => refreshLocation(false), [refreshLocation]);
+
+  /**
    * Dismisses the current error.
    *
    * Needed because the only other thing that clears `error` is the start of a refresh, and
@@ -224,7 +239,9 @@ export const useGeolocation = () => {
     error,
     permissionState,
     locationPending,
-    refreshLocation,
+    // Deliberately not exporting `refreshLocation` itself. Its `silent` parameter is only
+    // meaningful to the background refresh loop inside this hook; see `requestLocation`.
+    requestLocation,
     clearError,
     clearLocation,
   };

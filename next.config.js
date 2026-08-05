@@ -1,6 +1,18 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+
+  /**
+   * Stops `next dev` writing AGENTS.md and CLAUDE.md into the repo root.
+   *
+   * Next 16.3 generates both on every dev start and re-adds them if deleted, so removing
+   * the files alone does not hold: they come back on the next `yarn dev` and show up as
+   * untracked noise in every subsequent commit. This flag is the only thing that actually
+   * stops it. `.gitignore` carries a matching entry as a backstop, in case the option is
+   * ever renamed.
+   */
+  agentRules: false,
+
   images: {
     remotePatterns: [
       {

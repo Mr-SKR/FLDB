@@ -33,7 +33,13 @@ interface FoodCardProps {
   hasVeg: boolean;
   useLocation: boolean;
   index: number;
-  setUseLocation: (force?: boolean) => Promise<boolean>;
+  /**
+   * Asks for the user's position. Arity 0: this used to be typed `(force?: boolean)` and
+   * called as `setUseLocation(true)`, but it is bound to the geolocation hook, whose first
+   * parameter is `silent`. "Force" therefore meant its opposite, and a denied permission
+   * produced no error and no visible response at all.
+   */
+  onRequestLocation: () => Promise<boolean>;
   rating?: number;
   url?: string;
   /** Google's html_attributions for the place photo; required to be displayed. */
@@ -626,7 +632,7 @@ export default function FoodCard(props: FoodCardProps): React.ReactElement {
               clickable
               icon={<MyLocationIcon sx={{ fontSize: "1rem !important", color: "white !important" }} />}
               label="Show distance"
-              onClick={() => props.setUseLocation(true)}
+              onClick={() => props.onRequestLocation()}
               sx={{
                 bgcolor: "rgba(255,255,255,0.2)",
                 color: "white",

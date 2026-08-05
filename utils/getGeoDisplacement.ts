@@ -23,4 +23,15 @@ const getDisplacementFromLatLonInKm = (
   return d;
 };
 
-export { getDisplacementFromLatLonInKm };
+/**
+ * Rounds a distance to what is actually shown to a reader: one decimal place.
+ *
+ * Shared by the feed cards and the "Restaurants nearby" list so the two cannot disagree
+ * about the same pair of coordinates. The feed used `Math.ceil`, which rendered every
+ * distance under a kilometre as "1 km away" — a place across the street and one a
+ * fifteen-minute walk away were indistinguishable, on the one screen whose entire purpose
+ * is proximity.
+ */
+const roundDistanceKm = (km: number): number => Math.round(km * 10) / 10;
+
+export { getDisplacementFromLatLonInKm, roundDistanceKm };

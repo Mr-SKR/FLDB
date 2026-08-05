@@ -3,7 +3,7 @@ import Place from "../models/Place";
 import Video from "../models/Video";
 import { PlaceInterface, VideoInterface } from "../types/types";
 import { serializeDocument, serializeDocuments } from "../utils/serialize";
-import { getDisplacementFromLatLonInKm } from "../utils/getGeoDisplacement";
+import { getDisplacementFromLatLonInKm, roundDistanceKm } from "../utils/getGeoDisplacement";
 
 /**
  * Fields needed to render a feed card. Deliberately excludes `searchContent` and the
@@ -194,7 +194,7 @@ export const getNearbyPlaces = async (
     }))
     .sort((a, b) => a.distanceKm - b.distanceKm)
     .slice(0, limit)
-    .map((entry) => ({ ...entry, distanceKm: Math.round(entry.distanceKm * 10) / 10 }));
+    .map((entry) => ({ ...entry, distanceKm: roundDistanceKm(entry.distanceKm) }));
 };
 
 export const getAllPlaceSlugs = async (): Promise<{ slug: string; updatedAt: string }[]> => {

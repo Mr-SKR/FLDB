@@ -227,8 +227,10 @@ Two things soften this in practice:
 
 - `/api/search` is a dynamic route querying MongoDB live, so browsing, searching, and
   location-sorted results are **always fresh** regardless of ISR.
-- New places get their page generated on first request (`fallback: true`), so they don't wait
-  for a revalidation window.
+- New places get their page generated on first request (`fallback: "blocking"`), so they don't
+  wait for a revalidation window. It blocks rather than serving a skeleton because the first
+  request for a newly synced restaurant is very often a crawler, which would otherwise index
+  a loading state.
 
 If you want a sync reflected immediately, trigger a **Vercel Deploy Hook** after running it;
 a rebuild regenerates every page from current data.
