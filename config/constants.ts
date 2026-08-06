@@ -18,7 +18,7 @@ export const LOCATION_MAX_SILENT_FAILURES = 3;
  *
  * Resolution order lives in `lib/seo.ts`: `NEXT_PUBLIC_SITE_URL` first, then `HOST` for
  * compatibility with existing deployments, then this. Prefer `NEXT_PUBLIC_SITE_URL` when
- * configuring an environment — `HOST` is the bind address on many Node hosts, so a
+ * configuring an environment: `HOST` is the bind address on many Node hosts, so a
  * platform setting `HOST=0.0.0.0` would silently rewrite every canonical URL on the site.
  *
  * Deliberately a plain string so it is also safe in client bundles.

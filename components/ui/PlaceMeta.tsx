@@ -28,8 +28,13 @@ const describeOpenState = (state: OpenState): { label: string; color: "success" 
   }
 
   if (state.status === "closed") {
+    // `opensDay` is only set when the next opening falls on a later day, so a place opening
+    // again this morning reads "Closed · opens 9 am" rather than naming today's weekday as
+    // though it were next week. Interpolating it unconditionally also printed the literal
+    // "undefined" the moment it became optional.
+    const when = [state.opensDay, state.opensAt].filter(Boolean).join(" ");
     return {
-      label: state.opensAt ? `Closed · opens ${state.opensDay} ${state.opensAt}` : "Closed",
+      label: state.opensAt ? `Closed · opens ${when}` : "Closed",
       color: "default",
     };
   }

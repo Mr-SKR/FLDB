@@ -174,7 +174,7 @@ const Home: React.FC<HomeProps> = ({ data, total, canonical, jsonLd }) => {
           what made this easy to miss: only the surround changes, and on a phone the cards
           cover all of it. On a desktop the feed is capped at 1280px, so the majority of a
           wide window was this element, and it stayed pure black with the toggle set to
-          light — the theme switch appeared to do nothing on the home page.
+          light, so the theme switch appeared to do nothing on the home page.
         */
         bgcolor: "background.default",
         height: "100dvh",

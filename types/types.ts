@@ -46,9 +46,17 @@ export interface PlaceInterface {
    */
   user_ratings_total?: number;
   url?: string; // Google Maps URL
+  /**
+   * Deliberately mirrors the Mongoose schema, which stores only these two fields.
+   *
+   * Google also returns a structured `periods` array, and this interface used to declare it.
+   * Nothing ever populated it: `models/Place.ts` omits it, so Mongoose drops it on save, and
+   * a type that advertises a field no document can carry invites code to read it and get
+   * `undefined` forever. `lib/openingHours.ts` parses `weekday_text` precisely because
+   * `periods` is not available; if it is ever wanted, the schema is what has to change first.
+   */
   opening_hours?: {
     open_now?: boolean;
-    periods?: unknown[];
     weekday_text?: string[];
   };
   business_status?: string;

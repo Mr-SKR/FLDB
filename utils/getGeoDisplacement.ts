@@ -28,7 +28,7 @@ const getDisplacementFromLatLonInKm = (
  *
  * Shared by the feed cards and the "Restaurants nearby" list so the two cannot disagree
  * about the same pair of coordinates. The feed used `Math.ceil`, which rendered every
- * distance under a kilometre as "1 km away" — a place across the street and one a
+ * distance under a kilometre as "1 km away", so a place across the street and one a
  * fifteen-minute walk away were indistinguishable, on the one screen whose entire purpose
  * is proximity.
  */

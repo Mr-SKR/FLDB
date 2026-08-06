@@ -132,7 +132,8 @@ The database is populated by a multi-step synchronization process that interface
 
 All sync requests must be authorized using the `SYNC_SECRET` defined in your environment variables. For security, authorization is strictly handled via headers to avoid leaking secrets in server logs or browser history.
 - **Header:** `Authorization: Bearer YOUR_SYNC_SECRET`
-- The secret is compared in constant time, and the endpoint is rate limited per IP (both before and after authentication). Note that the limiter is in-memory, so on serverless platforms it is per-instance and best-effort. Use Vercel Firewall rules or an external counter if you need a hard global limit.
+- The secret is compared with `crypto.timingSafeEqual`, so a guess of the right length leaks nothing about *which* characters were wrong. The comparison does still reveal whether the length matched, which is inherent to fixed-time comparison of variable-length inputs and is bounded in practice by the pre-auth rate limit below.
+- The endpoint is rate limited per IP, both before and after authentication. Note that the limiter is in-memory, so on serverless platforms it is per-instance and best-effort. Use Vercel Firewall rules or an external counter if you need a hard global limit.
 
 The public `/api/search` endpoint is rate limited on the same mechanism (60 requests per minute
 per IP), which is far above real use (a debounced search is one request and infinite scroll

@@ -108,7 +108,7 @@ export const usePlaceFilters = (
    * This exists because the filter panels previously reported `filteredPlaces.length`,
    * which is how many places have been *loaded*. With a page size of ten that read "10+
    * places" on essentially every first render, and climbed as the reader scrolled, so the
-   * one thing it appeared to answer — whether a filter had narrowed anything — was the one
+   * one thing it appeared to answer (whether a filter had narrowed anything) was the one
    * thing it could not.
    */
   const [totalCount, setTotalCount] = useState<number | null>(initialTotal ?? null);

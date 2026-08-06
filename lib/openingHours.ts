@@ -180,6 +180,11 @@ export const buildOpeningHoursSpecification = (
  */
 export type OpenState =
   | { status: "open"; closesAt: string; closingSoon: boolean }
+  /**
+   * `opensDay` is absent when the next opening is later the same day, which is what lets a
+   * caller write "opens 9 am" rather than naming the weekday someone is already living in.
+   * Present only when the reader has to come back on a different day.
+   */
   | { status: "closed"; opensAt?: string; opensDay?: DayName }
   | { status: "unknown" };
 
@@ -309,7 +314,10 @@ export const getOpenState = (weekdayText?: string[], now: Date = new Date()): Op
     return {
       status: "closed",
       opensAt: formatClockTime(clockAt(upcoming[0])),
-      opensDay: DAY_NAMES[candidateDay],
+      // Named only when it is not today. `ahead === 0` is the branch reached by someone
+      // reading the page before opening time, and telling them a place "opens Monday 9 am"
+      // on a Monday morning reads as next week rather than in an hour.
+      ...(ahead > 0 ? { opensDay: DAY_NAMES[candidateDay] } : {}),
     };
   }
 

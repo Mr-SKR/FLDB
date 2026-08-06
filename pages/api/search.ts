@@ -29,6 +29,16 @@ const SEARCH_WINDOW_MS = 60_000;
 const MAX_PAGE = 1000;
 
 /**
+ * Displacement assigned to a place with no stored coordinates, so it sorts last.
+ *
+ * Any value above the largest real result works: the pipeline measures in degrees, and the
+ * furthest two points on Earth are under 500 of them. This is the server-side counterpart
+ * to the `Infinity` the client uses in `hooks/usePlaceFilters.ts`, and it is a finite number
+ * only because it has to survive BSON.
+ */
+const UNLOCATED_DISPLACEMENT = 1e9;
+
+/**
  * Reads the requested ordering, defaulting anything unrecognised.
  *
  * `nearest` needs coordinates and silently degrades to `name` without them, which is what
@@ -240,23 +250,42 @@ export default async function handler(
           { $match: filter },
           {
             $addFields: {
+              /*
+                A place with no stored coordinates makes every arithmetic stage below
+                resolve to null, and MongoDB sorts null *before* all numbers ascending. Such
+                places therefore headed the nearest-first feed, taking page-one slots from
+                the genuinely close ones. The client re-sorts what it has been given
+                (`hooks/usePlaceFilters.ts` maps a missing position to `Infinity`), so the
+                symptom was not a visibly wrong order but nearby restaurants silently
+                displaced onto page two.
+
+                Coerced to a sentinel rather than removed with a `$match`: the `total` below
+                is a `countDocuments` over `filter` alone, so filtering here would report
+                more matches than the pipeline can ever return and leave the feed paging
+                towards results that do not exist.
+              */
               displacement: {
-                $sqrt: {
-                  $add: [
-                    { $pow: [{ $subtract: ["$geometry.location.lat", latNum] }, 2] },
-                    {
-                      $pow: [
+                $ifNull: [
+                  {
+                    $sqrt: {
+                      $add: [
+                        { $pow: [{ $subtract: ["$geometry.location.lat", latNum] }, 2] },
                         {
-                          $multiply: [
-                            { $subtract: ["$geometry.location.lng", lngNum] },
-                            lngScale
+                          $pow: [
+                            {
+                              $multiply: [
+                                { $subtract: ["$geometry.location.lng", lngNum] },
+                                lngScale
+                              ]
+                            },
+                            2
                           ]
-                        },
-                        2
+                        }
                       ]
                     }
-                  ]
-                }
+                  },
+                  UNLOCATED_DISPLACEMENT
+                ]
               }
             }
           },
